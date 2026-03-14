@@ -19,12 +19,31 @@ window.LibreWatchPlayer = (() => {
   }
 
   function clearPlayer() {
-    if (sponsorInterval) clearInterval(sponsorInterval);
-    if (currentPlayer) {
-      currentPlayer.pause();
-      currentPlayer.dispose?.();
-      currentPlayer = null;
+    if (sponsorInterval) {
+      clearInterval(sponsorInterval);
+      sponsorInterval = null;
     }
+    
+    if (currentPlayer && typeof currentPlayer === 'object') {
+      try {
+        // Stop YouTube player safely
+        if ('stopVideo' in currentPlayer) {
+          currentPlayer.stopVideo();
+        }
+        // Try destroy only if it exists and is a function
+        if (typeof currentPlayer.destroy === 'function') {
+          currentPlayer.destroy();
+        }
+        // Pause Video.js safely  
+        if ('pause' in currentPlayer) {
+          currentPlayer.pause();
+        }
+      } catch (e) {
+        console.warn('Player cleanup error (safe to ignore):', e);
+      }
+    }
+    
+    currentPlayer = null;
     sponsorSegments = [];
   }
 
@@ -56,27 +75,26 @@ window.LibreWatchPlayer = (() => {
     });
   }
 
-  // SIMPLIFIED: Skip yt-dlp entirely - straight to reliable YouTube
   async function create(containerId, videoId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return console.error('Container missing');
 
     await loadConfig();
     await loadCore();
+    
+    // Safe cleanup before creating new player
     clearPlayer();
 
-    // IMMEDIATE YouTube player - 100% reliable
-    console.log('🎥 Using YouTube player (most reliable)');
-    return createYouTubePlayer(containerId, videoId, options);
-  }
-
-  async function createYouTubePlayer(containerId, videoId, options) {
-    const container = document.getElementById(containerId);
+    console.log('🎥 Creating YouTube player...');
     
-    // Load YouTube API
+    // Load YouTube API safely
     await new Promise(resolve => {
       if (window.YT?.Player) return resolve();
-      window.onYouTubeIframeAPIReady = resolve;
+      
+      window.onYouTubeIframeAPIReady = () => {
+        resolve();
+      };
+      
       if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
         const tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
@@ -84,6 +102,8 @@ window.LibreWatchPlayer = (() => {
       }
     });
 
+    // Clear container completely
+    container.innerHTML = '';
     container.innerHTML = '<div id="yt-player"></div>';
     
     currentPlayer = new YT.Player('yt-player', {
@@ -102,7 +122,6 @@ window.LibreWatchPlayer = (() => {
         onReady: async () => {
           console.log(`🎬 YouTube Ready: ${videoId}`);
           
-          // SponsorBlock + DeArrow via LibreUltra
           if (window.LibreUltra) {
             sponsorSegments = await window.LibreUltra.sponsor(videoId) || [];
             sponsorSegments.sort((a, b) => a.segment[0] - b.segment[0]);
@@ -110,7 +129,7 @@ window.LibreWatchPlayer = (() => {
 
             const dearrowData = await window.LibreUltra.dearrow(videoId);
             if (dearrowData?.[videoId]) {
-              const { titles = [], thumbnails = [] } = dearrowData[videoId];
+              const { titles = [] } = dearrowData[videoId];
               const bestTitle = titles.find(t => t.locked) || titles[0];
               if (bestTitle) {
                 document.title = bestTitle.title;
@@ -125,7 +144,9 @@ window.LibreWatchPlayer = (() => {
           }
           
           startSponsorWatcher(currentPlayer);
-          if (options.autoplay) currentPlayer.playVideo();
+          if (options.autoplay) {
+            currentPlayer.playVideo();
+          }
         },
         onError: (e) => console.error('YouTube error:', e.data)
       }
