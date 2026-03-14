@@ -3,18 +3,20 @@ window.LibreWatchPlayer = (() => {
   let sponsorSegments = [];
   let sponsorInterval = null;
   let CFG = null;
-  let YT_DLP_ENDPOINT = null;
 
   async function loadConfig() {
     if (CFG) return CFG;
     try {
       const res = await fetch('/LibreWatch/Player/config.json');
-      CFG = await res.json().Player;
-      
-      // External yt-dlp server endpoint from config
-      YT_DLP_ENDPOINT = CFG.APIs?.['yt-dlp'] || 'https://ytdl.example.com/api';
+      const fullConfig = await res.json();
+      CFG = fullConfig.Player || fullConfig; // Handle both structures
+      console.log('✅ Config loaded:', CFG);
       return CFG;
-    } catch (e) { console.error('Config failed:', e); return null; }
+    } catch (e) { 
+      console.error('Config failed:', e); 
+      CFG = {}; // Initialize empty config
+      return CFG; 
+    }
   }
 
   function clearPlayer() {
@@ -52,30 +54,48 @@ window.LibreWatchPlayer = (() => {
     });
   }
 
-  // External yt-dlp server integration (NO github files)
+  // Safe yt-dlp with fallback endpoint
   async function getYtDlpStream(videoId, quality = 'best[height<=1080]') {
-    const config = await loadConfig();
-    const endpoint = config.APIs?.['yt-dlp'] || 'https://inv.tux.pizza/api/v1';
-    
     try {
-      console.log('🔄 yt-dlp: Extracting formats...');
-      const response = await fetch(`${endpoint}/formats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: `https://youtube.com/watch?v=${videoId}`,
-          format: quality,
-          proxy: config?.Proxy?.Local
-        })
-      });
+      const config = await loadConfig();
       
-      const data = await response.json();
-      console.log('✅ yt-dlp:', data.url ? 'Stream ready' : 'Failed');
-      return data.url || null;
+      // Multiple fallback endpoints (no config required)
+      const endpoints = [
+        config?.APIs?.['yt-dlp'],
+        'https://inv.tux.pizza/api/v1',
+        'https://ytdl.srv.nagisa.xyz/api',
+        config?.Proxy?.Local?.replace(/\/$/, '') + '/ytdl/' + videoId
+      ].filter(Boolean);
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔄 yt-dlp: ${endpoint}`);
+          const response = await fetch(`${endpoint}/formats`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: `https://youtube.com/watch?v=${videoId}`,
+              format: quality
+            }),
+            signal: AbortSignal.timeout(8000)
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.url) {
+              console.log('✅ yt-dlp stream ready!');
+              return data.url;
+            }
+          }
+        } catch (e) {
+          console.log(`❌ yt-dlp ${endpoint} failed`);
+        }
+      }
     } catch (e) {
-      console.error('yt-dlp server failed:', e);
-      return null;
+      console.error('yt-dlp failed:', e);
     }
+    
+    return null; // Graceful fallback
   }
 
   async function create(containerId, videoId, options = {}) {
@@ -87,29 +107,20 @@ window.LibreWatchPlayer = (() => {
 
     clearPlayer();
     
-    // Priority 1: yt-dlp (external server - NO local files)
-    console.log('🎯 Trying yt-dlp first...');
+    // Priority 1: yt-dlp (works without config)
     const ytdlpUrl = await getYtDlpStream(videoId, options.quality || 'best[height<=1080]');
     
     if (ytdlpUrl) {
-      console.log('✅ yt-dlp stream ready!');
       return createVideoJsPlayer(containerId, videoId, ytdlpUrl, options, 'yt-dlp');
     }
     
-    // Priority 2: Proxied Piped
-    console.log('🔄 yt-dlp failed, trying Piped...');
-    const pipedUrl = await createProxiedPipedPlayer(containerId, videoId, options);
-    if (pipedUrl) return pipedUrl;
-    
-    // Priority 3: YouTube iframe
-    console.log('🔄 Piped failed, YouTube fallback');
-    return createYouTubeFallback(containerId, videoId, options);
+    // Priority 2: Proxied Piped (your existing proxies)
+    return createProxiedPipedPlayer(containerId, videoId, options);
   }
 
   async function createVideoJsPlayer(containerId, videoId, streamUrl, options, source = 'unknown') {
     const container = document.getElementById(containerId);
     
-    // Load Video.js
     if (typeof videojs === 'undefined') {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -152,19 +163,27 @@ window.LibreWatchPlayer = (() => {
 
   async function createProxiedPipedPlayer(containerId, videoId, options) {
     const config = await loadConfig();
-    const pipedInstance = config?.UI?.Piped?.['kavin.rocks'] || 'https://pipedapi.kavin.rocks/';
-    const streamUrl = `${pipedInstance}streams/${videoId}/video.m3u8`;
+    const pipedInstance = config?.UI?.Piped?.['kavin.rocks'] || 
+                         config?.UI?.Piped?.Piped || 
+                         'https://pipedapi.kavin.rocks/';
     
+    const streamUrl = `${pipedInstance}streams/${videoId}/video.m3u8`;
     const proxyStreamUrl = await getProxiedStream(streamUrl);
+    
     if (proxyStreamUrl) {
       return createVideoJsPlayer(containerId, videoId, proxyStreamUrl, options, 'piped');
     }
-    return null;
+    
+    // Direct Piped fallback
+    return createVideoJsPlayer(containerId, videoId, streamUrl, options, 'piped-direct');
   }
 
   async function getProxiedStream(streamUrl) {
     const config = await loadConfig();
-    const proxies = [config?.Proxy?.Local, ...(config?.Proxy?.Fallback || [])].filter(Boolean);
+    const proxies = [
+      config?.Proxy?.Local, 
+      ...(config?.Proxy?.Fallback || [])
+    ].filter(Boolean);
 
     for (const proxy of proxies) {
       try {
@@ -175,7 +194,7 @@ window.LibreWatchPlayer = (() => {
           signal: AbortSignal.timeout(3000)
         });
         if (res.ok) {
-          console.log(`✅ Proxy stream ready: ${proxy}`);
+          console.log(`✅ Proxy stream: ${proxy}`);
           return proxiedUrl;
         }
       } catch (e) {
@@ -189,10 +208,10 @@ window.LibreWatchPlayer = (() => {
     player.ready(async () => {
       console.log(`🎬 ${source.toUpperCase()} Ready: ${videoId}`);
 
-      sponsorSegments = await window.LibreUltra.sponsor(videoId) || [];
+      sponsorSegments = await window.LibreUltra?.sponsor(videoId) || [];
       sponsorSegments.sort((a, b) => a.segment[0] - b.segment[0]);
       
-      const dearrowData = await window.LibreUltra.dearrow(videoId);
+      const dearrowData = await window.LibreUltra?.dearrow(videoId);
       if (dearrowData?.[videoId]) {
         const { titles = [], thumbnails = [] } = dearrowData[videoId];
         const bestTitle = titles.find(t => t.locked) || titles[0];
@@ -215,10 +234,8 @@ window.LibreWatchPlayer = (() => {
     });
 
     player.on('error', () => {
-      console.log(`${source} failed, trying fallback...`);
-      const containerId = player.el().parentElement.id;
-      if (source === 'yt-dlp') createProxiedPipedPlayer(containerId, videoId, options);
-      else if (source === 'piped') createYouTubeFallback(containerId, videoId, options);
+      console.log(`${source} failed, YouTube fallback`);
+      createYouTubeFallback(containerId, videoId, options);
     });
   }
 
@@ -242,6 +259,7 @@ window.LibreWatchPlayer = (() => {
       events: { 
         onReady: () => {
           console.log(`🎥 YouTube Ready: ${videoId}`);
+          sponsorSegments = window.LibreUltra?.sponsor(videoId) || [];
           startSponsorWatcher(currentPlayer);
         }
       }
