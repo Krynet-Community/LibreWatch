@@ -12,10 +12,30 @@ window.LibreWatchPlayer = (() => {
       CFG = fullConfig.Player || fullConfig;
       return CFG;
     } catch (e) { 
-      console.error('Config failed:', e); 
       CFG = {}; 
       return CFG; 
     }
+  }
+
+  // 🔥 LOAD YOUR LOCAL Adblock.js
+  async function loadAdblock() {
+    if (window.AdblockLoaded) return;
+    
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/LibreWatch/Player/Adblock.js';  // YOUR LOCAL FILE
+      script.async = true;
+      script.onload = () => {
+        console.log('🛡️ Adblock.js LOADED (local)');
+        window.AdblockLoaded = true;
+        resolve();
+      };
+      script.onerror = () => {
+        console.log('⚠️ Adblock.js not found, continuing...');
+        resolve(); // Continue even if missing
+      };
+      document.head.appendChild(script);
+    });
   }
 
   function clearPlayer() {
@@ -26,20 +46,10 @@ window.LibreWatchPlayer = (() => {
     
     if (currentPlayer && typeof currentPlayer === 'object') {
       try {
-        // Stop YouTube player safely
-        if ('stopVideo' in currentPlayer) {
-          currentPlayer.stopVideo();
-        }
-        // Try destroy only if it exists and is a function
-        if (typeof currentPlayer.destroy === 'function') {
-          currentPlayer.destroy();
-        }
-        // Pause Video.js safely  
-        if ('pause' in currentPlayer) {
-          currentPlayer.pause();
-        }
+        if ('stopVideo' in currentPlayer) currentPlayer.stopVideo();
+        if (typeof currentPlayer.destroy === 'function') currentPlayer.destroy();
       } catch (e) {
-        console.warn('Player cleanup error (safe to ignore):', e);
+        console.warn('Player cleanup:', e);
       }
     }
     
@@ -79,22 +89,18 @@ window.LibreWatchPlayer = (() => {
     const container = document.getElementById(containerId);
     if (!container) return console.error('Container missing');
 
+    // LOAD ORDER: Adblock → Core → Player
+    await loadAdblock();     // 🔥 YOUR Adblock.js FIRST
     await loadConfig();
     await loadCore();
     
-    // Safe cleanup before creating new player
     clearPlayer();
 
     console.log('🎥 Creating YouTube player...');
     
-    // Load YouTube API safely
     await new Promise(resolve => {
       if (window.YT?.Player) return resolve();
-      
-      window.onYouTubeIframeAPIReady = () => {
-        resolve();
-      };
-      
+      window.onYouTubeIframeAPIReady = resolve;
       if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
         const tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
@@ -102,8 +108,6 @@ window.LibreWatchPlayer = (() => {
       }
     });
 
-    // Clear container completely
-    container.innerHTML = '';
     container.innerHTML = '<div id="yt-player"></div>';
     
     currentPlayer = new YT.Player('yt-player', {
@@ -120,33 +124,16 @@ window.LibreWatchPlayer = (() => {
       },
       events: {
         onReady: async () => {
-          console.log(`🎬 YouTube Ready: ${videoId}`);
+          console.log(`🎬 YouTube Ready + 🛡️ Adblock ACTIVE: ${videoId}`);
           
           if (window.LibreUltra) {
             sponsorSegments = await window.LibreUltra.sponsor(videoId) || [];
             sponsorSegments.sort((a, b) => a.segment[0] - b.segment[0]);
             console.log(`✅ SponsorBlock: ${sponsorSegments.length} segments`);
-
-            const dearrowData = await window.LibreUltra.dearrow(videoId);
-            if (dearrowData?.[videoId]) {
-              const { titles = [] } = dearrowData[videoId];
-              const bestTitle = titles.find(t => t.locked) || titles[0];
-              if (bestTitle) {
-                document.title = bestTitle.title;
-                const titleEl = document.getElementById('videoTitle');
-                if (titleEl) {
-                  titleEl.textContent = bestTitle.title;
-                  titleEl.style.color = '#4ade80';
-                  titleEl.style.display = 'block';
-                }
-              }
-            }
           }
           
           startSponsorWatcher(currentPlayer);
-          if (options.autoplay) {
-            currentPlayer.playVideo();
-          }
+          if (options.autoplay) currentPlayer.playVideo();
         },
         onError: (e) => console.error('YouTube error:', e.data)
       }
