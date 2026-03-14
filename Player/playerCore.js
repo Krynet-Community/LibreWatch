@@ -104,27 +104,23 @@ window.LibreUltra = (() => {
 
     lastHit.set(key, now());
     
-    const req = fetchViaProxy(url)
-      .then(async r => {
-        if (!r?.ok) return null;
-        try {
-          return await r.json();
-        } catch {
-          return null;
-        }
-      })
-      .then(v => { 
+    const req = (async () => {
+      const res = await fetchViaProxy(url);
+      if (!res?.ok) return null;
+      
+      try {
+        const data = await res.json();
         inflight.delete(key); 
-        if (v) {
-          memory.set(key, { v, t: now() }); 
+        if (data) {
+          memory.set(key, { v: data, t: now() }); 
         }
         trim(); 
-        return v; 
-      })
-      .catch(() => { 
-        inflight.delete(key); 
-        return null; 
-      });
+        return data;
+      } catch {
+        inflight.delete(key);
+        return null;
+      }
+    })();
       
     inflight.set(key, req);
     return req;
@@ -152,7 +148,7 @@ window.LibreUltra = (() => {
 
   function prefetch(videoID) {
     if (requestIdleCallback) {
-      requestIdleCallback?.(() => dearrow(videoID));
+      requestIdleCallback(() => dearrow(videoID));
     }
   }
 
