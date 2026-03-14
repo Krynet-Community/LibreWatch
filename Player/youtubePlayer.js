@@ -1,5 +1,4 @@
 // Player/youtubePlayer.js
-// GitHub Pages safe, IFrame API + SponsorBlock + DeArrow
 window.LibreWatchPlayer = (() => {
   let currentPlayer = null;
   let sponsorSegments = [];
@@ -11,8 +10,7 @@ window.LibreWatchPlayer = (() => {
     try {
       const res = await fetch('/LibreWatch/Player/config.json', { cache: 'no-store' });
       const json = await res.json();
-      CFG = json.Player.Misc;
-      CFG.UI = json.Player.UI; // include UI for completeness
+      CFG = json.Player;
       return CFG;
     } catch (e) { console.error('Failed to load config:', e); return null; }
   }
@@ -59,9 +57,8 @@ window.LibreWatchPlayer = (() => {
     return new Promise((resolve) => {
       if (window.YT && window.YT.Player) return resolve();
       const tag = document.createElement('script');
-      tag.src = CFG?.APIs?.Google?.IFrame_API || 'https://www.youtube.com/iframe_api';
+      tag.src = 'https://www.youtube.com/iframe_api';  // Fixed: Load before config
       tag.onload = () => {
-        // Wait for YT API ready
         if (window.YT && window.YT.Player) resolve();
         else window.onYouTubeIframeAPIReady = () => resolve();
       };
@@ -74,9 +71,9 @@ window.LibreWatchPlayer = (() => {
     if (!container) return console.error('Container not found');
 
     const config = await loadConfig();
-    if (!config) return;
+    if (!config) return console.error('Config failed');
 
-    try { await loadCore(); } catch (e) { console.error(e); return; }
+    try { await loadCore(); } catch (e) { console.error('Core failed:', e); return; }
     await loadYouTubeAPI();
 
     clearPlayer();
@@ -95,17 +92,24 @@ window.LibreWatchPlayer = (() => {
       },
       events: {
         onReady: async (evt) => {
+          console.log('🎥 Player ready, fetching sponsors...');
+          
           try {
             sponsorSegments = (await window.LibreUltra.sponsor(videoId)) || [];
             sponsorSegments.sort((a, b) => a.segment[0] - b.segment[0]);
-          } catch {
+            console.log(`✅ SponsorBlock: ${sponsorSegments.length} segments found`);
+          } catch (e) {
+            console.error('SponsorBlock failed:', e);
             sponsorSegments = [];
           }
 
-          if (config.dearrow?.KEY) window.LibreUltra.prefetch(videoId);
+          if (config.Misc?.dearrow?.KEY) {
+            window.LibreUltra.prefetch(videoId);
+          }
 
           startSponsorWatcher(evt.target);
-        }
+        },
+        onError: (e) => console.error('Player error:', e)
       }
     });
 
