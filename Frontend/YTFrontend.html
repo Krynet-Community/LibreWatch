@@ -5,33 +5,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LibreWatch</title>
 <style>
-body { font-family: sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
-#player { width: 640px; max-width: 95vw; height: 360px; margin-top: 1rem; }
-input, button { padding: .5rem; margin: .25rem; font-size: 1rem; }
+body { 
+  font-family: sans-serif; 
+  background: #111; 
+  color: #eee; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  padding: 2rem; 
+}
+#player { 
+  width: 640px; 
+  max-width: 95vw; 
+  height: 360px; 
+  margin-top: 1rem;
+  background: #222;
+  border-radius: 8px;
+}
+input, button { 
+  padding: .75rem; 
+  margin: .25rem; 
+  font-size: 1rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #333;
+  color: #eee;
+}
+input:focus { outline: none; border-color: #666; }
+button { cursor: pointer; background: #4a5568; }
+button:hover { background: #5a67d8; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.status {
+  margin: 1rem 0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.status.success { background: #2d5a2d; }
+.status.error { background: #5a2d2d; }
+.status.loading { background: #4a5568; }
 </style>
 </head>
 <body>
 
-<h1>LibreWatch</h1>
+<h1>🛡️ LibreWatch</h1>
 <div>
-  <input id="videoInput" value="dQw4w9WgXcQ">
-  <button id="loadBtn">Load</button>
+  <input id="videoInput" value="dQw4w9WgXcQ" placeholder="YouTube URL or ID">
+  <button id="loadBtn">▶️ Load</button>
 </div>
+<div id="status" class="status" style="display: none;"></div>
 <div id="player"></div>
 
+<script src="/LibreWatch/Player/playerCore.js"></script>
 <script src="/LibreWatch/Player/youtubePlayer.js"></script>
 <script src="/LibreWatch/Player/extract.js"></script>
 
 <script>
   const btn = document.getElementById('loadBtn');
   const input = document.getElementById('videoInput');
+  const status = document.getElementById('status');
+  const playerDiv = document.getElementById('player');
 
+  // Status helper
+  function setStatus(message, type = 'loading') {
+    status.textContent = message;
+    status.className = `status ${type}`;
+    status.style.display = 'block';
+    if (type === 'success' || type === 'error') {
+      setTimeout(() => status.style.display = 'none', 3000);
+    }
+  }
+
+  // Load button handler
   btn.addEventListener('click', async () => {
     const raw = input.value.trim();
-    const id = window.extractVideoID(raw);
-    if (!id) return alert('Invalid video ID');
-    await window.LibreWatchPlayer.create('player', id, { autoplay: 1 });
+    btn.disabled = true;
+    btn.textContent = '⏳ Loading...';
+    setStatus('Extracting video ID...', 'loading');
+
+    try {
+      const id = window.extractVideoID(raw);
+      if (!id) throw new Error('Invalid video ID');
+
+      setStatus('Loading player with SponsorBlock...', 'loading');
+      
+      const player = await window.LibreWatchPlayer.create('player', id, { 
+        autoplay: 1 
+      });
+      
+      if (!player) throw new Error('Failed to create player');
+      
+      setStatus(`✅ Loaded! SponsorBlock active (${id})`, 'success');
+      
+    } catch (error) {
+      console.error('Load failed:', error);
+      setStatus(`❌ ${error.message}`, 'error');
+      playerDiv.innerHTML = '<div style="padding:1rem;color:#888;">Failed to load player</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '▶️ Load';
+    }
   });
+
+  // Enter key support
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') btn.click();
+  });
+
+  // Auto-test proxy on load (optional)
+  window.addEventListener('load', async () => {
+    if (window.LibreUltra) {
+      setStatus('Proxy check: Testing localhost → fallbacks...', 'loading');
+    }
+  });
+
+  // Drag & drop video URLs
+  input.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    input.value = url;
+    btn.click();
+  });
+  input.addEventListener('dragover', (e) => e.preventDefault());
 </script>
 
 </body>
