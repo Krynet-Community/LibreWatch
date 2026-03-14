@@ -1,11 +1,9 @@
-// Player/youtubePlayer.js
-// FIXED: Proxy warmup + better error handling
+// Player/youtubePlayer.js - FULL DeArrow + SponsorBlock
 window.LibreWatchPlayer = (() => {
   let currentPlayer = null;
   let sponsorSegments = [];
   let sponsorInterval = null;
   let CFG = null;
-  let proxyReady = false;  // NEW: Track proxy status
 
   async function loadConfig() {
     if (CFG) return CFG;
@@ -15,30 +13,6 @@ window.LibreWatchPlayer = (() => {
       CFG = json.Player;
       return CFG;
     } catch (e) { console.error('Failed to load config:', e); return null; }
-  }
-
-  // NEW: Warm up proxy BEFORE player loads
-  async function warmupProxy() {
-    if (proxyReady || !window.LibreUltra) return true;
-    
-    console.log('🔍 Warming up proxy system...');
-    try {
-      // Quick test with known-good video (Rickroll has sponsors)
-      const testSegments = await window.LibreUltra.sponsor('dQw4w9WgXcQ');
-      proxyReady = true;
-      
-      if (testSegments && testSegments.length > 0) {
-        console.log(`✅ Proxy ready! (${testSegments.length} test segments)`);
-        return true;
-      }
-      
-      console.log('✅ Proxy ready but no test segments');
-      return true;
-    } catch (e) {
-      console.log('⚠️ Proxy warmup failed, will retry per-video');
-      proxyReady = false;
-      return false;
-    }
   }
 
   function clearPlayer() {
@@ -61,11 +35,11 @@ window.LibreWatchPlayer = (() => {
         const [start, end] = seg.segment;
         if (t >= start && t < end) {
           player.seekTo(end, true);
-          console.log(`⏭️ Skipped sponsor: ${start.toFixed(1)}s → ${end.toFixed(1)}s`);
+          console.log(`⏭️ Skipped: ${start.toFixed(1)}s → ${end.toFixed(1)}s (${seg.category})`);
           break;
         }
       }
-    }, 250); // Slightly faster polling
+    }, 250);
   }
 
   async function loadCore() {
@@ -100,15 +74,11 @@ window.LibreWatchPlayer = (() => {
     const config = await loadConfig();
     if (!config) return console.error('Config failed');
 
-    try {
-      await loadCore();
+    try { 
+      await loadCore(); 
       await loadYouTubeAPI();
-      
-      // CRITICAL: Warmup proxy BEFORE creating player
-      await warmupProxy();
-      
     } catch (e) { 
-      console.error('Pre-flight failed:', e); 
+      console.error('Core/API load failed:', e); 
     }
 
     clearPlayer();
@@ -124,37 +94,64 @@ window.LibreWatchPlayer = (() => {
         modestbranding: 1,
         rel: 0,
         enablejsapi: 1,
-        controls: 1,  // Show controls for manual skipping
+        controls: 1,
       },
       events: {
         onReady: async (evt) => {
           console.log(`🎥 Player ready: ${videoId}`);
-          
+
+          // SponsorBlock
           try {
             sponsorSegments = (await window.LibreUltra.sponsor(videoId)) || [];
             sponsorSegments.sort((a, b) => a.segment[0] - b.segment[0]);
-            
-            if (sponsorSegments.length > 0) {
-              console.log(`✅ SponsorBlock: ${sponsorSegments.length} segments ready`);
-              console.log('Segments:', sponsorSegments.map(s => `${s.segment[0]}s-${s.segment[1]}s (${s.category})`));
-            } else {
-              console.log('ℹ️ No SponsorBlock segments for this video');
-            }
+            console.log(`✅ SponsorBlock: ${sponsorSegments.length} segments`);
           } catch (e) {
-            console.error('SponsorBlock fetch failed:', e);
+            console.error('SponsorBlock failed:', e);
             sponsorSegments = [];
           }
 
-          if (config.Misc?.dearrow?.KEY) {
-            window.LibreUltra.prefetch(videoId);
+          // DeArrow - FULL IMPLEMENTATION
+          try {
+            const dearrowData = await window.LibreUltra.dearrow(videoId);
+            if (dearrowData && dearrowData[videoId]) {
+              const branding = dearrowData[videoId];
+              
+              // Best title (highest votes or locked)
+              const bestTitle = branding.titles?.find(t => t.locked === true || t.votes > 0) || 
+                               branding.titles?.[0];
+              
+              // Best thumbnail timestamp  
+              const bestThumb = branding.thumbnails?.find(t => t.locked === true || t.votes > 0) ||
+                               branding.thumbnails?.[0];
+
+              // Update page title
+              if (bestTitle) {
+                document.title = `${bestTitle.title} - LibreWatch`;
+                console.log('📝 DeArrow title:', bestTitle.title);
+              }
+
+              // Show title on page
+              const titleEl = document.getElementById('videoTitle');
+              if (titleEl && bestTitle) {
+                titleEl.textContent = bestTitle.title;
+                titleEl.style.color = '#4ade80';
+                titleEl.style.display = 'block';
+              }
+
+              // Log thumbnail timestamp
+              if (bestThumb?.timestamp) {
+                console.log('🖼️ Best thumbnail at:', bestThumb.timestamp, 's');
+              }
+            } else {
+              console.log('ℹ️ No DeArrow data available');
+            }
+          } catch (e) {
+            console.log('DeArrow fetch failed:', e);
           }
 
           startSponsorWatcher(evt.target);
         },
-        onError: (e) => {
-          console.error('Player error:', e.data, e);
-          container.innerHTML = '<div style="padding:1rem;color:#f66;">Video failed to load</div>';
-        }
+        onError: (e) => console.error('Player error:', e.data)
       }
     });
 
