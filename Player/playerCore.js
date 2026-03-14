@@ -1,4 +1,6 @@
 window.LibreUltra = (() => {
+  'use strict';
+  
   let CFG = null;
   const memory = new Map();
   const inflight = new Map();
@@ -11,26 +13,54 @@ window.LibreUltra = (() => {
 
   let tokens = RATE_LIMIT;
   const bc = "BroadcastChannel" in window ? new BroadcastChannel("libre_ultra") : null;
-  if (bc) bc.onmessage = e => { if (e.data === "t" && tokens > 0) tokens--; };
+  if (bc) {
+    bc.onmessage = e => { 
+      if (e.data === "t" && tokens > 0) tokens--; 
+    };
+  }
+  
   setInterval(() => tokens = RATE_LIMIT, INTERVAL);
 
-  function allow() { if (tokens <= 0) return false; tokens--; bc?.postMessage("t"); return true; }
-  function now() { return performance.now(); }
-  function trim() { while (memory.size > MAX_CACHE) memory.delete(memory.keys().next().value); }
+  function allow() { 
+    if (tokens <= 0) return false; 
+    tokens--; 
+    bc?.postMessage("t"); 
+    return true; 
+  }
+  
+  function now() { 
+    return performance.now(); 
+  }
+  
+  function trim() { 
+    while (memory.size > MAX_CACHE) {
+      const firstKey = memory.keys().next().value;
+      if (firstKey) memory.delete(firstKey);
+    }
+  }
 
   setInterval(() => {
     const t = now();
-    for (const [k,v] of memory) if (t - v.t > TTL) memory.delete(k);
+    for (const [k, v] of memory) {
+      if (t - v.t > TTL) {
+        memory.delete(k);
+      }
+    }
   }, 60000);
 
   async function loadConfig() {
     if (CFG) return CFG;
     try {
-      const res = await fetch('/LibreWatch/Player/config.json', { cache: 'no-store' });
+      const res = await fetch('/LibreWatch/Player/config.json', { 
+        cache: 'no-store' 
+      });
       const json = await res.json();
       CFG = json.Player;
       return CFG;
-    } catch(e) { console.error('Config failed:', e); return null; }
+    } catch(e) { 
+      console.error('Config failed:', e); 
+      return null; 
+    }
   }
 
   async function fetchViaProxy(url) {
@@ -61,11 +91,19 @@ window.LibreUltra = (() => {
   async function core(key, url) {
     const cached = memory.get(key);
     if (cached && now() - cached.t < TTL) return cached.v;
-    if (lastHit.has(key) && now() - lastHit.get(key) < PER_VIDEO_COOLDOWN) return null;
+    
+    if (lastHit.has(key) && now() - lastHit.get(key) < PER_VIDEO_COOLDOWN) {
+      return null;
+    }
+    
     if (!allow()) return null;
-    if (inflight.has(key)) return inflight.get(key);
+    
+    if (inflight.has(key)) {
+      return inflight.get(key);
+    }
 
     lastHit.set(key, now());
+    
     const req = fetchViaProxy(url)
       .then(async r => {
         if (!r?.ok) return null;
@@ -77,11 +115,16 @@ window.LibreUltra = (() => {
       })
       .then(v => { 
         inflight.delete(key); 
-        if (v) memory.set(key, { v, t: now() }); 
+        if (v) {
+          memory.set(key, { v, t: now() }); 
+        }
         trim(); 
         return v; 
       })
-      .catch(() => { inflight.delete(key); return null; });
+      .catch(() => { 
+        inflight.delete(key); 
+        return null; 
+      });
       
     inflight.set(key, req);
     return req;
@@ -90,6 +133,7 @@ window.LibreUltra = (() => {
   async function sponsor(videoID) {
     const config = await loadConfig();
     if (!config?.Misc?.sponsorBlock?.API) return [];
+    
     const base = config.Misc.sponsorBlock.API.replace(/\/+$/, '');
     const url = `${base}/api/skipSegments?videoID=${videoID}`;
     console.log('🎯 SponsorBlock:', videoID);
@@ -99,6 +143,7 @@ window.LibreUltra = (() => {
   async function dearrow(videoID) {
     const config = await loadConfig();
     if (!config?.Misc?.dearrow?.API || !config.Misc.dearrow?.KEY) return null;
+    
     const base = config.Misc.dearrow.API.replace(/\/+$/, '');
     const url = `${base}/api/branding?videoID=${videoID}&license=${config.Misc.dearrow.KEY}`;
     console.log('🎯 DeArrow:', videoID);
@@ -106,7 +151,9 @@ window.LibreUltra = (() => {
   }
 
   function prefetch(videoID) {
-    requestIdleCallback?.(() => dearrow(videoID));
+    if (requestIdleCallback) {
+      requestIdleCallback?.(() => dearrow(videoID));
+    }
   }
 
   return { sponsor, dearrow, prefetch };
