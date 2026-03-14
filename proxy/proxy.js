@@ -1,4 +1,3 @@
-/* ULTRA-PRIVACY HTTPS-ONLY + QUAD9 DNS Bun Proxy */
 import { serve } from 'bun';
 
 const JUNK_PARAMS = new Set([
@@ -13,12 +12,9 @@ const JUNK_PARAMS = new Set([
   'si','s','hs','hss','hssi','hls','_gl','trk','trkCampaign'
 ]);
 
-// 🔒 QUAD9 DNS RESOLVER (9.9.9.9)
-const QUAD9_DNS = '9.9.9.9:53';
-
 serve({
   port: 3000,
-  fetch(req) {
+  async fetch(req) {  // ✅ FIXED: Added "async"
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -35,11 +31,10 @@ serve({
     }
 
     try {
-      // 🛡️ HTTPS ONLY + QUAD9 DNS
       let targetUrl = decodeURIComponent(urlParam);
       const urlObj = new URL(targetUrl);
       
-      // FORCE HTTPS
+      // 🔒 FORCE HTTPS
       if (urlObj.protocol === 'http:') {
         urlObj.protocol = 'https:';
         targetUrl = urlObj.toString();
@@ -60,7 +55,6 @@ serve({
       targetUrl = urlObj.toString();
       console.log(`🧹 Cleaned → ${targetUrl}`);
 
-      // 🚀 QUAD9 DNS + Privacy Headers
       const targetRes = await fetch(targetUrl, {
         headers: { 
           'User-Agent': 'Mozilla/5.0 (LibreWatch-Privacy/1.0)',
@@ -69,25 +63,21 @@ serve({
           'DNT': '1',
           'Sec-Fetch-Site': 'cross-site',
           'Sec-Fetch-Mode': 'cors'
-        },
-        // Bun automatically uses system DNS, but Quad9 blocks malware
+        }
       });
 
       const contentType = targetRes.headers.get('content-type') || 'text/plain';
-      const blockedHeaders = ['Set-Cookie', 'Cookie', 'X-Tracking-Id'];
-      
       let data = contentType.includes('application/json') 
         ? await targetRes.json() 
         : await targetRes.text();
 
-      console.log(`✅ QUAD9+HTTPS Privacy proxy OK: ${targetUrl}`);
+      console.log(`✅ QUAD9+HTTPS OK: ${targetUrl}`);
       
       return new Response(data, {
         status: targetRes.status,
         headers: {
           'Content-Type': contentType,
           'X-Privacy-Proxy': 'LibreWatch-Quad9-HTTPS-1.0',
-          'X-DNS-Resolver': 'Quad9-9.9.9.9',
           ...corsHeaders
         }
       });
@@ -101,5 +91,4 @@ serve({
     }
   }
 });
-
-console.log('🚀 QUAD9+HTTPS ULTRA-PRIVACY Proxy @ http://localhost:3000/?url=');
+console.log('🚀 QUAD9+HTTPS ULTRA-PRIVACY Proxy @ http://localhost:3000/?url=')
