@@ -56,6 +56,71 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 <div id="status" class="status" style="display: none;"></div>
 <div id="player"></div>
 
-<!-- FIXED: Correct script order -->
 <script src="/LibreWatch/Player/playerCore.js"></script>
 <script src="/LibreWatch/Player/youtubePlayer.js"></script>
+<script src="/LibreWatch/Player/extract.js"></script>
+
+<script>
+  const btn = document.getElementById('loadBtn');
+  const input = document.getElementById('videoInput');
+  const status = document.getElementById('status');
+  const playerDiv = document.getElementById('player');
+
+  function setStatus(message, type = 'loading') {
+    status.textContent = message;
+    status.className = `status ${type}`;
+    status.style.display = 'block';
+    if (type === 'success' || type === 'error') {
+      setTimeout(() => status.style.display = 'none', 3000);
+    }
+  }
+
+  // SIMPLIFIED: Back to original loading logic
+  btn.addEventListener('click', async () => {
+    const raw = input.value.trim();
+    btn.disabled = true;
+    btn.textContent = '⏳ Loading...';
+    setStatus('Extracting video ID...', 'loading');
+
+    try {
+      const id = window.extractVideoID(raw);
+      if (!id) throw new Error('Invalid video ID');
+
+      setStatus('Loading player...', 'loading');
+      
+      // Original simple call - let youtubePlayer.js handle proxy warmup internally
+      await window.LibreWatchPlayer.create('player', id, { autoplay: 1 });
+      
+      setStatus(`✅ Loaded! (${id})`, 'success');
+      
+    } catch (error) {
+      console.error('Load failed:', error);
+      setStatus(`❌ ${error.message}`, 'error');
+      playerDiv.innerHTML = '<div style="padding:1rem;color:#888;">Failed to load player</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '▶️ Load';
+    }
+  });
+
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') btn.click();
+  });
+
+  // Simple startup message
+  window.addEventListener('load', () => {
+    setStatus('🚀 Ready! Click Load to play with SponsorBlock.', 'success');
+    setTimeout(() => status.style.display = 'none', 2000);
+  });
+
+  input.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    input.value = url;
+    btn.click();
+  });
+  input.addEventListener('dragover', (e) => e.preventDefault());
+</script>
+
+</body>
+</html>
