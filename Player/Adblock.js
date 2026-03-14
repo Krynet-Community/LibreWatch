@@ -1,255 +1,49 @@
 (function() {
     'use strict';
-
-    // --- Configuration ---
-    // A list of common ad-related CSS selectors to hide or remove.
-    // This list is based on common patterns found in advertising elements.
-    const adSelectors = [
-        // Generic ad containers
-        '.ad', '.ads', '.advert', '.ad-container', '.banner-ad', '.google-ad',
-        '.top-ad', '.bottom-ad', '.sidebar-ad', '.popup-ad',
-        // Common element IDs
-        '#ad', '#ads', '#advertisement', '#banner', '#google_ads_iframe',
-        // Elements commonly used by ad networks or for injecting ads
-        'iframe[src*="adserver"]', 'iframe[src*="doubleclick.net"]',
-        'iframe[src*="googlesyndication.com"]', 'iframe[src*="adnxs.com"]',
-        'iframe[src*="taboola.com"]', 'iframe[src*="outbrain.com"]',
-        'iframe[src*="mgid.com"]', 'iframe[src*="monetize"]',
-        'div[id*="ad_"]', 'div[class*="ad_"]',
-        'div[id*="banner"]', 'div[class*="banner"]',
-        'div[id*="advert"]', 'div[class*="advert"]',
-        'div[data-google-query-id]', // Google AdSense specific
-        // Elements often associated with "suggested content" or native ads
-        '.native-ad', '.recommended-content', '.sponsored-content',
-        // Pop-up related
-        '.modal-backdrop', '.ad-popup-overlay', '.no-scroll',
-        'body.adblock-active', // Some sites add this class when detecting adblock
-        'div[style*="z-index: 99999"]', // Common for pop-ups
-        'div[style*="position: fixed"]', // Common for sticky ads/pop-ups
-
-        // --- Selectors specifically for video ads ---
-        'video', // Directly target video tags
-        'div[class*="video-ad"]', 'div[id*="video-ad"]', // Common video ad containers
-        'div[class*="video-overlay"]', 'div[id*="video-overlay"]', // Overlays often used for video pop-ups
-        'div[class*="video-player-ad"]', 'div[id*="video-player-ad"]', // More specific video player ad identifiers
-        'iframe[src*="videoplaza.tv"]', // Known video ad server
-        'iframe[src*="adform.net"]',   // Known video ad server
+    
+    let adSelectors=[],filterListsLoaded=0;const LISTS=[
+        'https://raw.githubusercontent.com/easylist/easylist/master/easyprivacy/easyprivacy.txt',
+        'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt',
+        'https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/AntiAdblockFilters/filter.txt',
+        'https://raw.githubusercontent.com/easylist/easylist/master/easylist/easylist.txt'
     ];
-
-    // CSS rules to hide elements immediately. This is injected into the <head>.
-    // Using !important to try and override inline styles.
-    const hideCss = adSelectors.join(', ') + ' { display: none !important; visibility: hidden !important; }';
-
-    // Anti-adblock detection circumvention attempts.
-    // These are common variables or functions websites might check.
-    const antiAdblockDefeaters = {
-        // Common global variables checked by adblock detection scripts
-        'AdBlock': false,
-        'adblock': false,
-        'blockAdblock': false,
-        '_AdBlock_': false,
-        'canRunAds': true, // Some scripts check this
-        // Overriding common detection functions/properties
-        'checkAdblock': () => false,
-        'isAdblockActive': false,
-    };
-
-    // --- New blacklist for unwanted pop-up/redirect URLs ---
-    const popupRedirectBlacklist = [
-        'doubleclick.net', 'googlesyndication.com', 'adserver', 'popads.net',
-        'onclickads.net', 'admaven.com', 'redirect.', 'trafficjunky.net',
-        'exoclick.com', 'propellerads.com', 'adsterra.com', 'mgid.com',
-        'popunder.', 'popcash.net', 'cpm-gate.com', 'adclick', 'ad-track'
-    ];
-
-    // --- Core Functions ---
-
-    /**
-     * Injects CSS rules into the document head to hide ad elements.
-     * This runs very early to hide ads before they are fully rendered.
-     */
-    function injectHideCss() {
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.appendChild(document.createTextNode(hideCss));
-        document.head.appendChild(style);
-        console.log('[Basic Ad Blocker] Injected CSS to hide ads.');
+    
+    async function fetchFilterList(url,i){
+        try{const res=await fetch(url,{cache:'no-cache'});if(!res.ok)return;
+            const text=await res.text(),rules=text.split('\n').filter(e=>e.trim()&&
+                !e.startsWith('!')&&!e.includes('@@')&&(
+                    e.includes('##')||e.includes('###')||e.includes('#@')||
+                    e.match(/\[-(?:ext-]bg-|abp:][^)]+\)/)||
+                    e.match(/##\w/)||e.includes('|http')||e.includes('ad$')
+                )).slice(0,500); // Limit to 500 rules per list
+            rules.forEach(rule=>{
+                const match=rule.match(/##(.*)/);if(match)adSelectors.push(match[1]);
+                const cosmetic=rule.match(/#@#(.*)/);if(cosmetic)adSelectors.push(cosmetic[1]);
+                const elemhide=rule.match(/#@\^#(.*)/);if(elemhide)adSelectors.push(elemhide[1]);
+            }),console.log(`[AdBlock] Loaded ${rules.length} rules from ${url.split('/').pop()} (${++filterListsLoaded}/4)`);
+        }catch(e){console.warn(`[AdBlock] Failed ${url}:`,e)}
     }
-
-    /**
-     * Attempts to apply anti-adblock detection circumvention.
-     * This tries to make the browser appear as if no ad blocker is present.
-     */
-    function circumventAntiAdblock() {
-        for (const prop in antiAdblockDefeaters) {
-            if (Object.prototype.hasOwnProperty.call(antiAdblockDefeaters, prop)) {
-                try {
-                    // Try to define a property on window to mimic no adblocker
-                    Object.defineProperty(window, prop, {
-                        value: antiAdblockDefeaters[prop],
-                        writable: false, // Make it read-only if possible
-                        configurable: true // Allow re-definition if needed
-                    });
-                    console.log(`[Basic Ad Blocker] Set window.${prop} to ${antiAdblockDefeaters[prop]}`);
-                } catch (e) {
-                    console.warn(`[Basic Ad Blocker] Failed to define window.${prop}:`, e);
-                    // Fallback for strict environments
-                    window[prop] = antiAdblockDefeaters[prop];
-                }
-            }
-        }
-
-        // Override common element dimension checks for anti-adblock
-        // Websites might create a dummy ad div and check its size.
-        const originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
-        const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
-
-        if (originalOffsetWidth) {
-            Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-                get: function() {
-                    // If the element has common ad-related attributes, return a non-zero size
-                    if (this.id && this.id.includes('ad') || this.className && this.className.includes('ad')) {
-                        return 100; // Return a plausible size
-                    }
-                    return originalOffsetWidth.get.apply(this);
-                },
-                configurable: true
-            });
-        }
-
-        if (originalOffsetHeight) {
-            Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
-                get: function() {
-                    // If the element has common ad-related attributes, return a non-zero size
-                    if (this.id && this.id.includes('ad') || this.className && this.className.includes('ad')) {
-                        return 100; // Return a plausible size
-                    }
-                    return originalOffsetHeight.get.apply(this);
-                },
-                configurable: true
-            });
-        }
-        console.log('[Basic Ad Blocker] Attempted to circumvent anti-adblock size checks.');
-    }
-
-    /**
-     * Overrides window.open to block unwanted pop-up and redirect tabs.
-     */
-    function blockPopunders() {
-        const originalWindowOpen = window.open;
-
-        window.open = function(url, name, features) {
-            // Check if the URL matches any of the blacklisted patterns
-            const isBlocked = popupRedirectBlacklist.some(pattern => url && url.includes(pattern));
-
-            if (isBlocked) {
-                console.warn(`[Basic Ad Blocker] Blocked pop-under/redirect attempt to: ${url}`);
-                return null; // Prevent the window from opening
-            }
-
-            // If not blocked, call the original window.open
-            return originalWindowOpen.apply(this, arguments);
-        };
-        console.log('[Basic Ad Blocker] window.open override active for pop-under blocking.');
-    }
-
-
-    /**
-     * Removes or hides elements matching ad selectors.
-     * This function can be called repeatedly, e.g., on DOM mutations.
-     * @param {HTMLElement | Document} container - The element or document to search within.
-     */
-    function blockAds(container = document) {
-        let blockedCount = 0;
-        adSelectors.forEach(selector => {
-            try {
-                const elements = container.querySelectorAll(selector);
-                elements.forEach(el => {
-                    // Check if the element is already hidden by our CSS
-                    // If not, hide it with inline style or remove it if it's an iframe
-                    if (el.style.display !== 'none' && el.style.visibility !== 'hidden') {
-                        if (el.tagName === 'IFRAME') {
-                            el.remove(); // Removing iframes is more effective for blocking content
-                            console.log(`[Basic Ad Blocker] Removed iframe: ${selector}`);
-                        } else if (el.tagName === 'VIDEO') {
-                            // For video elements, try to pause and remove source before removing
-                            if (!el.paused) el.pause();
-                            el.src = ''; // Clear the video source
-                            // Remove child <source> elements if any
-                            while (el.firstChild) {
-                                el.removeChild(el.firstChild);
-                            }
-                            el.remove(); // Remove the video element entirely
-                            console.log(`[Basic Ad Blocker] Removed video ad: ${selector}`);
-                        }
-                        else {
-                            el.style.setProperty('display', 'none', 'important');
-                            el.style.setProperty('visibility', 'hidden', 'important');
-                            console.log(`[Basic Ad Blocker] Hidden element: ${selector}`);
-                        }
-                        blockedCount++;
-                    }
-                });
-            } catch (e) {
-                console.error(`[Basic Ad Blocker] Error querying selector ${selector}:`, e);
-            }
-        });
-        if (blockedCount > 0) {
-            console.log(`[Basic Ad Blocker] Blocked ${blockedCount} elements.`);
-        }
-    }
-
-    /**
-     * Initializes the MutationObserver to watch for DOM changes.
-     * When new nodes are added, it re-applies ad-blocking logic.
-     */
-    function setupMutationObserver() {
-        const observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.addedNodes.length > 0) {
-                    mutation.addedNodes.forEach(node => {
-                        // Only process element nodes
-                        if (node.nodeType === 1) { // Node.ELEMENT_NODE
-                            blockAds(node);
-                        }
-                    });
-                }
-            });
-        });
-
-        // Start observing the entire document body for child list changes and subtree changes
-        observer.observe(document.body, { childList: true, subtree: true });
-        console.log('[Basic Ad Blocker] MutationObserver set up.');
-    }
-
-    // --- Execution Flow ---
-
-    // 1. Run anti-adblock circumvention attempts immediately
-    //    before most scripts have a chance to run their checks.
-    circumventAntiAdblock();
-
-    // 2. Override window.open to block pop-unders and unwanted redirects.
-    blockPopunders();
-
-    // 3. Inject CSS rules at document-start to hide elements early.
-    //    This is the fastest way to get visual hiding in place.
-    injectHideCss();
-
-    // 4. Perform an initial ad blocking pass on the existing document.
-    //    This catches elements present in the initial HTML.
-    blockAds();
-
-    // 5. Set up a MutationObserver to catch dynamically loaded ads or elements
-    //    that change after the initial page load. This ensures continuous blocking.
-    //    Wait for the document body to be available before setting up the observer.
-    if (document.body) {
-        setupMutationObserver();
-    } else {
-        // If body is not yet available (e.g., very early in document-start),
-        // wait for DOMContentLoaded to ensure body exists.
-        document.addEventListener('DOMContentLoaded', setupMutationObserver);
-    }
-
-    console.log('[Basic Ad Blocker] UserScript initialized.');
-
+    
+    const hideCss='[style*="position:fixed"][style*="z-index"],[id*="ad"],[class*="ad"],'+adSelectors.join(',')+'{display:none!important;visibility:hidden!important;height:1px!important;width:1px!important;pointer-events:none!important;opacity:0!important;}',
+    antiAdblock={AdBlock:false,adblock:false,blockAdblock:false,_AdBlock_:false,canRunAds:true,checkAdblock:()=>false,isAdblockActive:false};
+    
+    function injectHideCss(){const e=document.createElement('style');e.type='text/css',e.appendChild(document.createTextNode(hideCss)),document.head.appendChild(e)}
+    function circumventAntiAdblock(){Object.keys(antiAdblock).forEach(e=>Object.defineProperty(window,e,{value:antiAdblock[e],writable:false,configurable:true}));console.log('[AdBlock] Anti-adblock bypassed')}
+    function blockPopunders(){const e=window.open;window.open=t=>adNetworks.some(n=>t?.includes(n))?(console.log(`[AdBlock] Blocked: ${t}`),null):e.apply(this,arguments)}
+    function blockAds(e=document){let t=0;adSelectors.forEach(n=>{e.querySelectorAll(n).forEach(e=>e.style.cssText='display:none!important;visibility:hidden!important;height:1px!important;',t++)}),t&&console.log(`[AdBlock] Nuked ${t} elements`)}
+    
+    // LOAD ALL 4 LISTS PARALLEL
+    LISTS.forEach((url,i)=>fetchFilterList(url,i));
+    
+    circumventAntiAdblock(),blockPopunders(),injectHideCss(),blockAds(),
+    new MutationObserver(e=>e.forEach(e=>e.addedNodes.forEach(e=>e.nodeType===1&&blockAds(e)))).observe(document.body||document.documentElement,{childList:true,subtree:true}),
+    setTimeout(blockAds,1000),setTimeout(blockAds,3000),setTimeout(blockAds,5000),
+    console.log('[AdBlock] LIVE uBlock/AdGuard/EasyList/EasyPrivacy - AUTO-UPDATING');
+    
+    // REFRESH EVERY 24 HOURS
+    setInterval(async()=>{
+        filterListsLoaded=0,adSelectors.length=0,
+        console.log('[AdBlock] Refreshing filter lists...'),
+        LISTS.forEach((url,i)=>fetchFilterList(url,i))
+    },24*60*60*1000);
 })();
