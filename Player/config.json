@@ -1,5 +1,14 @@
 {
   "Player": {
+    "Proxy": {
+      "Local": "http://localhost:3000/?url=",
+      "Fallback": [
+        "https://corsproxy.io/?url=",
+        "https://api.allorigins.win/raw?url=",
+        "https://corsproxy.cyou/?url=",
+        "https://cors.lol/?url="
+      ]
+    },
     "UI": {
       "default": "https://www.youtube-nocookie.com/embed/",
       "Invidious": {
@@ -44,14 +53,8 @@
         }
       }
     },
-    "Proxy": {
-      "CorsProxy": "https://corsproxy.io/?url=",
-      "AllOriginsRaw": "https://api.allorigins.win/raw?url=",
-      "AllOriginsJSON": "https://api.allorigins.win/get?url=",
-      "CorsProxy2": "https://corsproxy.cyou/?url="
-    },
     "APIs": {
-      "Indivious": {
+      "Invidious": {
         "Kavin.rocks API": "https://invidious.kavin.rocks/api/v1/"
       },
       "Piped": {},
