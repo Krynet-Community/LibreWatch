@@ -65,30 +65,58 @@ window.LibreUltra = (() => {
 
   async function fetchViaProxy(url) {
     const config = await loadConfig();
+    
+    // ALL PROXIES - try until one works
     const proxies = [
-      config?.Proxy?.Local,
-      ...(config?.Proxy?.Fallback || [])
+      config?.Proxy?.Local,           // http://localhost:3000/?url=
+      config?.Proxy?.Cloud,           // ngrok fallback
+      ...config?.Proxy?.Fallback || [], // allorigins, corsproxy, etc
+      'https://api.allorigins.win/raw?url=',     // 1
+      'https://corsproxy.io/?url=',               // 2
+      'https://thingproxy.freeboard.io/fetch/',   // 3
+      'https://api.codetabs.com/v1/proxy?quest=', // 4
     ].filter(Boolean);
 
     for (const proxy of proxies) {
       try {
         const proxiedUrl = `${proxy}${encodeURIComponent(url)}`;
+        console.log(`🔄 Trying proxy: ${proxy}`);
+        
         const res = await fetch(proxiedUrl, { 
           referrerPolicy: "no-referrer", 
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(5000),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (LibreWatch/1.0)'
+          }
         });
+        
         if (res.ok) {
           console.log(`✅ Using proxy: ${proxy}`);
           return res;
+        } else {
+          console.log(`❌ Proxy ${proxy} failed: ${res.status}`);
         }
       } catch (e) {
-        console.log(`❌ Proxy failed: ${proxy}`);
+        console.log(`❌ Proxy ${proxy} error: ${e.message}`);
       }
     }
-    return null;
+    
+    console.log('❌ ALL proxies failed - direct fetch');
+    // Last resort: direct (CORS might fail)
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(3000) });
+    } catch {
+      return null;
+    }
   }
 
   async function core(key, url) {
+    // VALIDATE videoID first!
+    if (!key || key.includes('undefined') || key === 'sb_') {
+      console.warn('❌ Invalid key/videoID:', key);
+      return null;
+    }
+
     const cached = memory.get(key);
     if (cached && now() - cached.t < TTL) return cached.v;
     
@@ -127,6 +155,11 @@ window.LibreUltra = (() => {
   }
 
   async function sponsor(videoID) {
+    if (!videoID || videoID === 'undefined') {
+      console.warn('❌ No valid videoID for SponsorBlock');
+      return [];
+    }
+    
     const config = await loadConfig();
     if (!config?.Misc?.sponsorBlock?.API) return [];
     
@@ -137,6 +170,11 @@ window.LibreUltra = (() => {
   }
 
   async function dearrow(videoID) {
+    if (!videoID || videoID === 'undefined') {
+      console.warn('❌ No valid videoID for DeArrow');
+      return null;
+    }
+    
     const config = await loadConfig();
     if (!config?.Misc?.dearrow?.API || !config.Misc.dearrow?.KEY) return null;
     
@@ -147,6 +185,7 @@ window.LibreUltra = (() => {
   }
 
   function prefetch(videoID) {
+    if (!videoID || videoID === 'undefined') return;
     if (requestIdleCallback) {
       requestIdleCallback(() => dearrow(videoID));
     }
