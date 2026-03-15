@@ -66,21 +66,17 @@ window.LibreUltra = (() => {
   async function fetchViaProxy(url) {
     const config = await loadConfig();
     
-    // ALL PROXIES - try until one works
+    // Config-driven proxies ONLY - no hardcoding
     const proxies = [
-      config?.Proxy?.Local,           // http://localhost:3000/?url=
-      config?.Proxy?.Cloud,           // ngrok fallback
-      ...config?.Proxy?.Fallback || [], // allorigins, corsproxy, etc
-      'https://api.allorigins.win/raw?url=',     // 1
-      'https://corsproxy.io/?url=',               // 2
-      'https://thingproxy.freeboard.io/fetch/',   // 3
-      'https://api.codetabs.com/v1/proxy?quest=', // 4
+      config?.Proxy?.Local,
+      config?.Proxy?.Cloud,
+      ...config?.Proxy?.Fallback || []
     ].filter(Boolean);
 
     for (const proxy of proxies) {
       try {
         const proxiedUrl = `${proxy}${encodeURIComponent(url)}`;
-        console.log(`🔄 Trying proxy: ${proxy}`);
+        console.log(`🔄 Trying: ${proxy}`);
         
         const res = await fetch(proxiedUrl, { 
           referrerPolicy: "no-referrer", 
@@ -90,29 +86,28 @@ window.LibreUltra = (() => {
           }
         });
         
-        if (res.ok) {
-          console.log(`✅ Using proxy: ${proxy}`);
-          return res;
-        } else {
-          console.log(`❌ Proxy ${proxy} failed: ${res.status}`);
+        // Accept ANY response < 400 that looks like data
+        if (res && res.status < 400) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json') || contentType.includes('text/')) {
+            console.log(`✅ Using proxy: ${proxy}`);
+            return res;
+          }
         }
+        console.log(`❌ Proxy ${proxy} failed: ${res?.status || 'no response'}`);
+        
       } catch (e) {
         console.log(`❌ Proxy ${proxy} error: ${e.message}`);
       }
     }
     
-    console.log('❌ ALL proxies failed - direct fetch');
-    // Last resort: direct (CORS might fail)
-    try {
-      return await fetch(url, { signal: AbortSignal.timeout(3000) });
-    } catch {
-      return null;
-    }
+    console.log('❌ All config proxies failed');
+    return null;
   }
 
   async function core(key, url) {
-    // VALIDATE videoID first!
-    if (!key || key.includes('undefined') || key === 'sb_') {
+    // VALIDATE videoID - reject undefined!
+    if (!key || key.includes('undefined') || key === 'sb_' || key === 'da_') {
       console.warn('❌ Invalid key/videoID:', key);
       return null;
     }
@@ -155,8 +150,8 @@ window.LibreUltra = (() => {
   }
 
   async function sponsor(videoID) {
-    if (!videoID || videoID === 'undefined') {
-      console.warn('❌ No valid videoID for SponsorBlock');
+    if (!videoID || videoID === 'undefined' || videoID.length < 5) {
+      console.warn('❌ No valid videoID for SponsorBlock:', videoID);
       return [];
     }
     
@@ -170,8 +165,8 @@ window.LibreUltra = (() => {
   }
 
   async function dearrow(videoID) {
-    if (!videoID || videoID === 'undefined') {
-      console.warn('❌ No valid videoID for DeArrow');
+    if (!videoID || videoID === 'undefined' || videoID.length < 5) {
+      console.warn('❌ No valid videoID for DeArrow:', videoID);
       return null;
     }
     
@@ -185,7 +180,7 @@ window.LibreUltra = (() => {
   }
 
   function prefetch(videoID) {
-    if (!videoID || videoID === 'undefined') return;
+    if (!videoID || videoID === 'undefined' || videoID.length < 5) return;
     if (requestIdleCallback) {
       requestIdleCallback(() => dearrow(videoID));
     }
