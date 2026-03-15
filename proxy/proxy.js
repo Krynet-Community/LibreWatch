@@ -1,3 +1,8 @@
+# 1. Generate self-signed certs (dev only)
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+  -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost"
+
+# 2. HTTPS Bun Proxy
 import { serve } from 'bun';
 
 const JUNK_PARAMS = new Set([
@@ -14,7 +19,11 @@ const JUNK_PARAMS = new Set([
 
 serve({
   port: 3000,
-  async fetch(req) {  // ✅ FIXED: Added "async"
+  tls: {
+    cert: Bun.file('cert.pem'),
+    key: Bun.file('key.pem'),
+  },
+  async fetch(req) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -34,14 +43,12 @@ serve({
       let targetUrl = decodeURIComponent(urlParam);
       const urlObj = new URL(targetUrl);
       
-      // 🔒 FORCE HTTPS
       if (urlObj.protocol === 'http:') {
         urlObj.protocol = 'https:';
         targetUrl = urlObj.toString();
         console.log(`🔒 HTTPS upgrade: ${targetUrl}`);
       }
 
-      // 🧹 NUKE tracking params
       for (const [key] of urlObj.searchParams) {
         if (JUNK_PARAMS.has(key)) {
           urlObj.searchParams.delete(key);
@@ -59,10 +66,7 @@ serve({
         headers: { 
           'User-Agent': 'Mozilla/5.0 (LibreWatch-Privacy/1.0)',
           'Referer': '',
-          'Accept': 'application/json,*/*;q=0.9',
-          'DNT': '1',
-          'Sec-Fetch-Site': 'cross-site',
-          'Sec-Fetch-Mode': 'cors'
+          'DNT': '1'
         }
       });
 
@@ -71,13 +75,13 @@ serve({
         ? await targetRes.json() 
         : await targetRes.text();
 
-      console.log(`✅ QUAD9+HTTPS OK: ${targetUrl}`);
+      console.log(`✅ HTTPS Proxy OK: ${targetUrl}`);
       
       return new Response(data, {
         status: targetRes.status,
         headers: {
           'Content-Type': contentType,
-          'X-Privacy-Proxy': 'LibreWatch-Quad9-HTTPS-1.0',
+          'X-Privacy-Proxy': 'LibreWatch-HTTPS-1.0',
           ...corsHeaders
         }
       });
@@ -91,4 +95,5 @@ serve({
     }
   }
 });
-console.log('🚀 QUAD9+HTTPS ULTRA-PRIVACY Proxy @ http://localhost:3000/?url=')
+
+console.log('🚀 HTTPS Proxy @ https://localhost:3000/?url=');
