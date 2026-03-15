@@ -1,12 +1,9 @@
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
-  -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost"
-
-# 2. HTTPS Bun Proxy
+// 🚀 HTTP Proxy (NO CERTS NEEDED)
 import { serve } from 'bun';
 
 const JUNK_PARAMS = new Set([
   'utm_source','utm_medium','utm_campaign','utm_term','utm_content',
-  'utm_referrer','utm_reader','utm_name','utm_id','utm_group',
+  'utm_referrer','utm_name','utm_id','utm_group',
   'fbclid','gclid','msclid','mc_cid','igshid','mc_eid',
   'ref','referrer','source','origin','came_from',
   'cid','campaignid','adgroupid','adid','keyword',
@@ -18,10 +15,6 @@ const JUNK_PARAMS = new Set([
 
 serve({
   port: 3000,
-  tls: {
-    cert: Bun.file('cert.pem'),
-    key: Bun.file('key.pem'),
-  },
   async fetch(req) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -74,13 +67,13 @@ serve({
         ? await targetRes.json() 
         : await targetRes.text();
 
-      console.log(`✅ HTTPS Proxy OK: ${targetUrl}`);
+      console.log(`✅ Proxy OK: ${targetUrl}`);
       
       return new Response(data, {
         status: targetRes.status,
         headers: {
           'Content-Type': contentType,
-          'X-Privacy-Proxy': 'LibreWatch-HTTPS-1.0',
+          'X-Privacy-Proxy': 'LibreWatch-HTTP-1.0',
           ...corsHeaders
         }
       });
@@ -95,4 +88,4 @@ serve({
   }
 });
 
-console.log('🚀 HTTPS Proxy @ https://localhost:3000/?url=');
+console.log('🚀 HTTP Proxy @ http://localhost:3000/?url=');
