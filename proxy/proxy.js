@@ -1,4 +1,3 @@
-// 🚀 HTTP Proxy (NO CERTS NEEDED)
 import { serve } from 'bun';
 
 const JUNK_PARAMS = new Set([
