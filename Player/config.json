@@ -1,66 +1,128 @@
 {
-  "Player": {
-    "Proxy": {
-      "Local": "http://localhost:3000/?url=",
-      "Fallback": [
-        "https://corsproxy.io/?url=",
-        "https://api.allorigins.win/raw?url=",
-        "https://corsproxy.cyou/?url=",
-        "https://cors.lol/?url="
+  "player": {
+    "proxy": {
+      "local": {
+        "url": "http://localhost:3000/?url=",
+        "enabled": true,
+        "priority": 0
+      },
+      "fallbacks": [
+        {
+          "name": "corsproxy_io",
+          "url": "https://corsproxy.io/?url=",
+          "priority": 1
+        },
+        {
+          "name": "allorigins",
+          "url": "https://api.allorigins.win/raw?url=",
+          "priority": 2
+        },
+        {
+          "name": "corsproxy_cyou",
+          "url": "https://corsproxy.cyou/?url=",
+          "priority": 3
+        },
+        {
+          "name": "cors_lol",
+          "url": "https://cors.lol/?url=",
+          "priority": 4
+        }
+      ],
+      "retryPolicy": {
+        "maxRetries": 3,
+        "timeoutMs": 8000,
+        "rotateOnFail": true
+      }
+    },
+
+    "frontends": {
+      "youtube": {
+        "embed": "https://www.youtube-nocookie.com/embed/",
+        "defaultMode": "embed"
+      },
+
+      "invidious": [
+        {
+          "name": "inv_nadeko",
+          "url": "https://inv.nadeko.net/",
+          "region": "global",
+          "priority": 1
+        },
+        {
+          "name": "nerdvpn",
+          "url": "https://invidious.nerdvpn.de/",
+          "priority": 2
+        },
+        {
+          "name": "nerdvpn_onion",
+          "url": "http://nerdvpneaggggfdiurknszkbmhvjndks5z5k3g5yp4nhphflh3n3boad.onion/",
+          "network": "tor",
+          "priority": 3
+        },
+        {
+          "name": "nadeko_i2p",
+          "url": "http://nadekoohummkxncchcsylr3eku36ze4waq4kdrhcqupckc3pe5qq.b32.i2p/",
+          "network": "i2p",
+          "priority": 4
+        }
+      ],
+
+      "piped": [
+        {
+          "name": "piped_main",
+          "frontend": "https://piped.video/",
+          "api": "https://pipedapi.frontendfriendly.xyz/",
+          "priority": 1
+        },
+        {
+          "name": "piped_kavin",
+          "frontend": "https://piped.video/",
+          "api": "https://pipedapi.kavin.rocks/",
+          "priority": 2
+        }
       ]
     },
-    "UI": {
-      "default": "https://www.youtube-nocookie.com/embed/",
-      "Invidious": {
-        "NerdVPN": "https://invidious.nerdvpn.de/",
-        "NerdVPN (Onion)": "http://nerdvpneaggggfdiurknszkbmhvjndks5z5k3g5yp4nhphflh3n3boad.onion/",
-        "Nadeko (I2P)": "http://nadekoohummkxncchcsylr3eku36ze4waq4kdrhcqupckc3pe5qq.b32.i2p/",
-        "Nadeko": "https://inv.nadeko.net/"
-      },
-      "Piped": {
-        "Piped": "https://piped.video/",
-        "Frontendprivacy": "https://pipedapi.frontendfriendly.xyz/",
-        "kavin.rocks": "https://pipedapi.kavin.rocks/"
-      }
-    },
-    "Misc": {
+
+    "features": {
       "sponsorBlock": {
-        "API": "https://sponsor.ajay.app/",
-        "config": {
-          "Categories": {
-            "sponsor": "skip",
-            "selfpromo": "skip",
-            "interaction": "skip",
-            "intro": "skip",
-            "outro": "skip",
-            "preview": "skip",
-            "filler": "skip",
-            "poi_highlight": "none"
-          },
-          "AutoSkip": true,
-          "SkipThreshold": 0,
-          "ShowToast": false
+        "enabled": true,
+        "api": "https://sponsor.ajay.app/",
+        "autoSkip": true,
+        "skipThreshold": 0,
+        "showToast": false,
+        "categories": {
+          "sponsor": "skip",
+          "selfpromo": "skip",
+          "interaction": "skip",
+          "intro": "skip",
+          "outro": "skip",
+          "preview": "skip",
+          "filler": "skip",
+          "poi_highlight": "none"
         }
       },
-      "dearrow": {
-        "API": "https://dearrow.ajay.app/",
-        "KEY": "FR3Lo-e986a",
-        "config": {
-          "ReplaceTitles": true,
-          "ReplaceThumbnails": true,
-          "FallbackToOriginal": true,
-          "PreferOriginalIfNoVotes": true
-        }
+
+      "deArrow": {
+        "enabled": true,
+        "api": "https://dearrow.ajay.app/",
+        "apiKey": "REDACTED",
+        "replaceTitles": true,
+        "replaceThumbnails": true,
+        "fallbackToOriginal": true,
+        "preferOriginalIfNoVotes": true
       }
     },
-    "APIs": {
-      "Invidious": {
-        "Kavin.rocks API": "https://invidious.kavin.rocks/api/v1/"
+
+    "apis": {
+      "youtube": {
+        "iframe": "https://www.youtube.com/iframe_api",
+        "apiKey": null
       },
-      "Piped": {},
-      "Google": {
-        "API_KEY": "",
-        "IFrame_API": "https://www.youtube.com/iframe_api"
+      "invidious": {
+        "apiBase": "https://invidious.kavin.rocks/api/v1/"
+      },
+      "piped": {
+        "apiBase": null
       }
     }
   }
