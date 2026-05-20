@@ -2,11 +2,10 @@ window.LibreUltra = (() => {
   'use strict';
 
   /* =========================
-     CONFIG CACHE
+     CONFIG
   ========================= */
 
   let CFG = null;
-  let PROXIES = null;
 
   async function loadConfig() {
     if (CFG) return CFG;
@@ -17,131 +16,95 @@ window.LibreUltra = (() => {
       });
 
       const json = await res.json();
-      CFG = json?.Player || null;
+      CFG = json?.Player || {};
       return CFG;
 
-    } catch (e) {
-      console.error('[LibreUltra] Config load failed:', e);
-      return null;
+    } catch {
+      CFG = {};
+      return CFG;
     }
   }
 
-  async function getProxies() {
-    if (PROXIES) return PROXIES;
-
-    const cfg = await loadConfig();
-
-    PROXIES = [
-      cfg?.Proxy?.Local,
-      cfg?.Proxy?.Cloud,
-      ...(cfg?.Proxy?.Fallback || [])
-    ].filter(Boolean);
-
-    return PROXIES;
-  }
-
   /* =========================
-     RATE LIMIT (time-window based)
+     SIMPLE CACHE
   ========================= */
-
-  const RATE_LIMIT = 25;
-  const WINDOW = 60_000;
-
-  const timestamps = [];
-
-  function allow() {
-    const now = performance.now();
-
-    // prune old
-    while (timestamps.length && now - timestamps[0] > WINDOW) {
-      timestamps.shift();
-    }
-
-    if (timestamps.length >= RATE_LIMIT) return false;
-
-    timestamps.push(now);
-    return true;
-  }
-
-  /* =========================
-     CACHE (LRU-ish)
-  ========================= */
-
-  const CACHE_TTL = 5 * 60_000;
-  const MAX_CACHE = 80;
 
   const cache = new Map();
+  const TTL = 5 * 60_000;
 
   function cacheGet(key) {
     const hit = cache.get(key);
     if (!hit) return null;
 
-    if (performance.now() - hit.t > CACHE_TTL) {
+    if (Date.now() - hit.t > TTL) {
       cache.delete(key);
       return null;
     }
-
-    // refresh LRU order
-    cache.delete(key);
-    cache.set(key, hit);
 
     return hit.v;
   }
 
   function cacheSet(key, value) {
-    cache.set(key, { v: value, t: performance.now() });
+    cache.set(key, { v: value, t: Date.now() });
+  }
 
-    if (cache.size > MAX_CACHE) {
-      const oldest = cache.keys().next().value;
-      cache.delete(oldest);
+  /* =========================
+     RATE LIMIT (simple window)
+  ========================= */
+
+  const LIMIT = 25;
+  const WINDOW = 60_000;
+  const hits = [];
+
+  function allowed() {
+    const now = Date.now();
+
+    while (hits.length && now - hits[0] > WINDOW) {
+      hits.shift();
     }
+
+    if (hits.length >= LIMIT) return false;
+
+    hits.push(now);
+    return true;
   }
 
   /* =========================
-     INFLIGHT DEDUPE
+     PROXY LIST (STATIC FALLBACKS)
   ========================= */
 
-  const inflight = new Map();
-
-  /* =========================
-     NORMALIZATION
-  ========================= */
-
-  function normalizeKey(key) {
-    if (!key) return null;
-    if (typeof key !== 'string') return null;
-
-    const k = key.trim();
-
-    if (!k || k === 'undefined') return null;
-    if (k === 'sb_' || k === 'da_') return null;
-
-    return k;
+  function getProxyList(cfg) {
+    return [
+      cfg?.Proxy?.Local,
+      cfg?.Proxy?.Cloud,
+      ...(cfg?.Proxy?.Fallback || [])
+    ].filter(Boolean);
   }
 
   /* =========================
-     FETCH ENGINE
+     FETCH WITH FALLBACK
   ========================= */
 
-  async function fetchViaProxy(url) {
-    const proxies = await getProxies();
+  async function fetchWithFallback(url) {
+    const cfg = await loadConfig();
+    const proxies = getProxyList(cfg);
 
-    for (const proxy of proxies) {
+    for (const endpoint of proxies) {
       try {
-        const res = await fetch(proxy + encodeURIComponent(url), {
+        const res = await fetch(endpoint + encodeURIComponent(url), {
           referrerPolicy: 'no-referrer',
           signal: AbortSignal.timeout(5000)
         });
 
-        if (!res || res.status >= 400) continue;
-
-        const type = res.headers.get('content-type') || '';
-        if (!type.includes('json') && !type.includes('text')) continue;
-
-        return res;
+        if (res?.ok) {
+          const type = res.headers.get('content-type') || '';
+          if (type.includes('json') || type.includes('text')) {
+            return res;
+          }
+        }
 
       } catch {
-        continue;
+        // silent fallback
       }
     }
 
@@ -149,42 +112,27 @@ window.LibreUltra = (() => {
   }
 
   /* =========================
-     CORE FETCH WRAPPER
+     CORE REQUEST
   ========================= */
 
   async function core(key, url) {
-    const k = normalizeKey(key);
-    if (!k) return null;
+    if (!key || typeof key !== 'string') return null;
 
-    const cached = cacheGet(k);
+    const cached = cacheGet(key);
     if (cached) return cached;
 
-    if (!allow()) return null;
+    if (!allowed()) return null;
 
-    if (inflight.has(k)) {
-      return inflight.get(k);
+    const res = await fetchWithFallback(url);
+    if (!res?.ok) return null;
+
+    try {
+      const data = await res.json();
+      if (data) cacheSet(key, data);
+      return data;
+    } catch {
+      return null;
     }
-
-    const task = (async () => {
-      try {
-        const res = await fetchViaProxy(url);
-        if (!res?.ok) return null;
-
-        const data = await res.json();
-
-        if (data) cacheSet(k, data);
-
-        return data;
-
-      } catch {
-        return null;
-      } finally {
-        inflight.delete(k);
-      }
-    })();
-
-    inflight.set(k, task);
-    return task;
   }
 
   /* =========================
@@ -192,21 +140,20 @@ window.LibreUltra = (() => {
   ========================= */
 
   async function sponsor(videoID) {
-    const id = normalizeKey(videoID);
-    if (!id || id.length < 5) return [];
+    if (!videoID || typeof videoID !== 'string') return [];
 
     const cfg = await loadConfig();
     const base = cfg?.Misc?.sponsorBlock?.API;
     if (!base) return [];
 
-    const url = `${base.replace(/\/+$/, '')}/api/skipSegments?videoID=${id}`;
+    const url =
+      `${base.replace(/\/+$/, '')}/api/skipSegments?videoID=${videoID}`;
 
-    return core(`sb_${id}`, url) || [];
+    return core(`sb_${videoID}`, url) || [];
   }
 
   async function dearrow(videoID) {
-    const id = normalizeKey(videoID);
-    if (!id || id.length < 5) return null;
+    if (!videoID || typeof videoID !== 'string') return null;
 
     const cfg = await loadConfig();
     const api = cfg?.Misc?.dearrow?.API;
@@ -215,23 +162,18 @@ window.LibreUltra = (() => {
     if (!api || !key) return null;
 
     const url =
-      `${api.replace(/\/+$/, '')}/api/branding?videoID=${id}&license=${key}`;
+      `${api.replace(/\/+$/, '')}/api/branding?videoID=${videoID}&license=${key}`;
 
-    return core(`da_${id}`, url);
+    return core(`da_${videoID}`, url);
   }
 
   function prefetch(videoID) {
-    const id = normalizeKey(videoID);
-    if (!id) return;
+    if (!videoID) return;
 
     if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => dearrow(id));
+      requestIdleCallback(() => dearrow(videoID));
     }
   }
-
-  /* =========================
-     PUBLIC API
-  ========================= */
 
   return {
     sponsor,
