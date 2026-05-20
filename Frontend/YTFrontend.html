@@ -133,7 +133,7 @@ const App = (() => {
   }
 
   function safeExtract(input) {
-    if (!window.URLNUKE?.extractVideoID) {
+    if (URLNUKE?.extractVideoID) {
       throw new Error('Extractor not loaded');
     }
 
