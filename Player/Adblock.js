@@ -1,60 +1,217 @@
-(function() {
-    'use strict';
-    
-    let adSelectors=[],filterListsLoaded=0;
-    const LISTS=[
-        'https://easylist.to/easylist/easyprivacy.txt',
-        'https://ublockorigin.github.io/uAssets/filters/filters.txt',
-        'https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/AnnoyancesFilter/sections/adguard_dns_filter.txt',
-        'https://easylist.to/easylist/easylist.txt'
-    ],adNetworks=['googleads.g.doubleclick.net','pagead2.googlesyndication.com','adservice.google.com','ad.doubleclick.net','youtube.com/get_video_ads'];
-    
-    async function fetchFilterList(url){
-        try{
-            console.log(`[AdBlock] Fetching ${url.split('/').pop()}...`);
-            const res=await fetch(url,{cache:'no-cache',mode:'cors'});
-            if(!res.ok){console.warn(`[AdBlock] ${url.split('/')[url.split('/').length-1]} failed: ${res.status}`);return;}
-            
-            const text=await res.text();
-            const rules=text.split('\n')
-                .filter(line=>line.trim()&&!line.startsWith('!')&&!line.includes('@@'))
-                .filter(line=>line.includes('##')||line.includes('###')||line.includes('#@'))
-                .slice(0,200);
-            
-            let count=0;
-            rules.forEach(rule=>{
-                const match=rule.match(/(?:##|###|#@#)(.*)/);
-                if(match){adSelectors.push(match[1].trim());count++;}
-            });
-            
-            filterListsLoaded++;
-            console.log(`[AdBlock] ✅ Loaded ${count} rules from ${url.split('/').pop()} (${filterListsLoaded}/4)`);
-        }catch(e){
-            console.warn(`[AdBlock] ❌ Failed ${url.split('/').pop()}:`,e);
-            filterListsLoaded++;
-        }
+(() => {
+  'use strict';
+
+  /* =========================
+     CONFIG
+  ========================= */
+
+  const FILTER_URLS = [
+    'https://easylist.to/easylist/easyprivacy.txt',
+    'https://ublockorigin.github.io/uAssets/filters/filters.txt',
+    'https://easylist.to/easylist/easylist.txt'
+  ];
+
+  const AD_NETWORK_PATTERNS = [
+    /doubleclick\.net/,
+    /googlesyndication\.com/,
+    /googleads/,
+    /adservice\.google\.com/,
+    /youtube\.com\/get_video_ads/
+  ];
+
+  const FALLBACK_SELECTORS = new Set([
+    '[id*="ad"]',
+    '[class*="ad"]',
+    '[class*="ads"]',
+    '.video-ads',
+    '.ytp-ad-module',
+    '.ytp-ad-overlay-container',
+    '.ytp-ad-skip-button',
+    'iframe[src*="doubleclick"]',
+    '.banner-ad',
+    '.native-ad'
+  ]);
+
+  const STYLE_ID = '__adblock_style__';
+
+  /* =========================
+     STATE
+  ========================= */
+
+  const adSelectors = new Set();
+  let lastScan = 0;
+  const SCAN_COOLDOWN = 500;
+
+  /* =========================
+     FILTER LOADER (cached)
+  ========================= */
+
+  async function loadFilters() {
+    const cacheKey = 'adblock_filters_v1';
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        JSON.parse(cached).forEach(s => adSelectors.add(s));
+        console.log('[AdBlock] Loaded filters from cache');
+        return;
+      } catch {}
     }
-    
-    const fallbackSelectors=[
-        '[id*="ad"]','[class*="ad"]','.ytp-ad-module','.video-ads','.ytp-ad-overlay',
-        '.ad-container','.banner-ad','iframe[src*="doubleclick"]','.native-ad','.ytp-ad-skip-button'
-    ];
-    
-    let hideCss=`[id*="ad"],[class*="ad"],${fallbackSelectors.join(',')}{display:none!important;visibility:hidden!important;height:0!important;pointer-events:none!important;}`;
-    
-    const antiAdblock={AdBlock:false,adblock:false,blockAdblock:false,_AdBlock_:false,canRunAds:true,checkAdblock:()=>false,isAdblockActive:false};
-    
-    function injectHideCss(){try{const s=document.createElement('style');s.textContent=hideCss,document.head.appendChild(s),console.log('[AdBlock] 💉 CSS injected')}catch(e){console.error('[AdBlock] CSS failed:',e)}}
-    function circumventAntiAdblock(){Object.keys(antiAdblock).forEach(k=>Object.defineProperty(window,k,{value:antiAdblock[k],writable:false,configurable:true})),console.log('[AdBlock] 🛡️ Anti-adblock bypassed')}
-    function blockPopunders(){const o=window.open;window.open=(u,n,f)=>adNetworks.some(n=>u?.includes(n))?(console.log(`[AdBlock] 🚫 Popunder: ${u}`),null):o.call(this,u,n,f),console.log('[AdBlock] 🔒 Popunders blocked')}
-    function blockAds(container=document){let count=0;adSelectors.concat(fallbackSelectors).forEach(sel=>{try{container.querySelectorAll(sel).forEach(el=>{if(el.style.display!=='none'){el.style.cssText='display:none!important;height:0!important;',count++}})}catch{}});count&&console.log(`[AdBlock] 💥 Nuked ${count} ads`)}
-    
-    circumventAntiAdblock(),blockPopunders(),injectHideCss(),blockAds();
-    
-    LISTS.forEach(fetchFilterList);
-    
-    if(document.body)new MutationObserver(muts=>muts.forEach(mut=>mut.addedNodes.forEach(node=>node.nodeType===1&&blockAds(node)))).observe(document.body,{childList:true,subtree:true}),console.log('[AdBlock] 👁️ Live scanning');
-    
-    setInterval(blockAds,1000);
-    
-    console.log('[AdBlock] 🚀 uBlock/AdGuard Fallback + LIVE scanning ACTIVE');
+
+    const fetchText = async (url) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(url);
+      return res.text();
+    };
+
+    for (const url of FILTER_URLS) {
+      try {
+        const text = await fetchText(url);
+
+        text.split('\n').forEach(line => {
+          const l = line.trim();
+          if (!l || l.startsWith('!')) return;
+
+          // cosmetic filters only
+          if (l.includes('##')) {
+            const sel = l.split('##')[1]?.trim();
+            if (sel) adSelectors.add(sel);
+          }
+        });
+
+      } catch (e) {
+        console.warn('[AdBlock] Failed:', url);
+      }
+    }
+
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify([...adSelectors])
+    );
+
+    console.log('[AdBlock] Filters cached:', adSelectors.size);
+  }
+
+  /* =========================
+     STYLE INJECTION
+  ========================= */
+
+  function injectStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+
+    const css = [
+      ...FALLBACK_SELECTORS,
+      ...adSelectors
+    ].join(',');
+
+    style.textContent = `
+      ${css} {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+
+    document.documentElement.appendChild(style);
+    console.log('[AdBlock] Styles injected');
+  }
+
+  /* =========================
+     SMART SCANNER
+  ========================= */
+
+  function scan(root = document) {
+    const now = performance.now();
+    if (now - lastScan < SCAN_COOLDOWN) return;
+    lastScan = now;
+
+    let removed = 0;
+
+    const selectors = [...adSelectors, ...FALLBACK_SELECTORS];
+
+    for (const sel of selectors) {
+      try {
+        root.querySelectorAll(sel).forEach(el => {
+          if (el.style.display !== 'none') {
+            el.style.setProperty('display', 'none', 'important');
+            removed++;
+          }
+        });
+      } catch {}
+    }
+
+    if (removed) {
+      console.debug(`[AdBlock] removed ${removed} nodes`);
+    }
+  }
+
+  /* =========================
+     NETWORK GUARD (safer)
+  ========================= */
+
+  function patchWindowOpen() {
+    const original = window.open;
+
+    window.open = function(url, ...args) {
+      if (!url) return original.apply(this, arguments);
+
+      if (AD_NETWORK_PATTERNS.some(r => r.test(url))) {
+        console.log('[AdBlock] blocked popup:', url);
+        return null;
+      }
+
+      return original.apply(this, arguments);
+    };
+  }
+
+  /* =========================
+     OBSERVER (throttled)
+  ========================= */
+
+  function observe() {
+    const observer = new MutationObserver((mutations) => {
+      let shouldScan = false;
+
+      for (const m of mutations) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType === 1) {
+            shouldScan = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldScan) scan();
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  /* =========================
+     INIT
+  ========================= */
+
+  async function init() {
+    injectStyles();
+    patchWindowOpen();
+
+    await loadFilters();
+
+    scan();
+    observe();
+
+    console.log('[AdBlock] 🚀 Active (optimized mode)');
+  }
+
+  init();
+})();
