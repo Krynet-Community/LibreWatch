@@ -107,107 +107,72 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 <script src="/LibreWatch/Player/extract.js"></script>
 
 <script>
-/* =========================
-   APP CONTROLLER
-========================= */
+  const btn = document.getElementById('loadBtn');
+  const input = document.getElementById('videoInput');
+  const status = document.getElementById('status');
+  const playerDiv = document.getElementById('player');
 
-const App = (() => {
-  const el = {
-    input: document.getElementById('videoInput'),
-    btn: document.getElementById('loadBtn'),
-    status: document.getElementById('status'),
-    player: document.getElementById('player')
-  };
+  function setStatus(message, type = 'loading') {
+    status.textContent = message;
+    status.className = `status ${type}`;
+    status.style.display = 'block';
 
-  let busy = false;
-
-  function setStatus(msg, type = '') {
-    el.status.textContent = msg;
-    el.status.className = type;
-  }
-
-  function setLoading(state) {
-    busy = state;
-    el.btn.disabled = state;
-    el.btn.textContent = state ? 'Loading...' : 'Load';
-  }
-
-  function safeExtract(input) {
-    if (URLNUKE.extractVideoID) {
-      throw new Error('Extractor not loaded');
+    if (type === 'success' || type === 'error') {
+      setTimeout(() => status.style.display = 'none', 3000);
     }
-
-    const id = URLNUKE.extractVideoID(input);
-    if (!id) throw new Error('Invalid video ID');
-
-    return id;
   }
 
-  async function loadVideo() {
-    if (busy) return;
+  btn.addEventListener('click', async () => {
+    const raw = input.value.trim();
+    btn.disabled = true;
+    btn.textContent = '⏳ Loading...';
 
-    const raw = el.input.value.trim();
+    setStatus('Extracting video ID...', 'loading');
 
     try {
-      setLoading(true);
-      setStatus('Extracting video ID...', 'status-loading');
+      const id = URLNUKE.extractVideoID(raw);
+      if (!id) throw new Error('Invalid video ID');
 
-      const id = safeExtract(raw);
-
-      setStatus('Loading player...', 'status-loading');
-
-      if (!window.LibreWatchPlayer?.create) {
-        throw new Error('Player not loaded');
-      }
+      setStatus('Loading player...', 'loading');
 
       await window.LibreWatchPlayer.create('player', id, {
         autoplay: 1
       });
 
-      setStatus(`Loaded: ${id}`, 'status-ok');
+      setStatus(`✅ Loaded! (${id})`, 'success');
 
-    } catch (err) {
-      console.error(err);
-      setStatus(err.message, 'status-error');
-      el.player.innerHTML = '<div style="color:#888;padding:1rem;">Failed to load</div>';
+    } catch (error) {
+      console.error('Load failed:', error);
+      setStatus(`❌ ${error.message}`, 'error');
+      playerDiv.innerHTML =
+        '<div style="padding:1rem;color:#888;">Failed to load player</div>';
 
     } finally {
-      setLoading(false);
+      btn.disabled = false;
+      btn.textContent = '▶️ Load';
     }
-  }
+  });
 
-  function bindEvents() {
-    el.btn.addEventListener('click', loadVideo);
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') btn.click();
+  });
 
-    el.input.addEventListener('keypress', e => {
-      if (e.key === 'Enter') loadVideo();
-    });
+  window.addEventListener('load', () => {
+    setStatus('🚀 Ready! Click Load to play with SponsorBlock.', 'success');
+    setTimeout(() => status.style.display = 'none', 2000);
+  });
 
-    el.input.addEventListener('drop', e => {
-      e.preventDefault();
-      const text = e.dataTransfer.getData('text/plain');
-      el.input.value = text;
-      loadVideo();
-    });
+  input.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const url =
+      e.dataTransfer.getData('text/uri-list') ||
+      e.dataTransfer.getData('text/plain');
 
-    el.input.addEventListener('dragover', e => e.preventDefault());
-  }
+    input.value = url;
+    btn.click();
+  });
 
-  function init() {
-    setStatus('Ready', 'status-ok');
-    bindEvents();
-  }
-
-  return { init };
-})();
-
-/* =========================
-   BOOT
-========================= */
-
-window.addEventListener('load', () => {
-  App.init();
-});
+  input.addEventListener('dragover', (e) => e.preventDefault());
 </script>
 
 </body>
