@@ -83,7 +83,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     setStatus('Extracting video ID...', 'loading');
 
     try {
-      const id = window.extractVideoID(raw);
+      const id = URLNUKE.extractVideoID(raw);
       if (!id) throw new Error('Invalid video ID');
 
       setStatus('Loading player...', 'loading');
