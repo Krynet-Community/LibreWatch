@@ -1,41 +1,90 @@
-# 🇮🇸 LibreWatch by Krynet, LLC
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111827,35:1E3A8A,70:2563EB,100:38BDF8&height=200&section=header&text=LibreWatch&fontSize=42&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Community-maintained%20continuation&descAlignY=58" />
+</p>
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+<h1 align="center">LibreWatch</h1>
 
-LibreWatch is an open-source "YouTube Watch Together" plugin scaffold built for the **Krynet** ecosystem. It provides the foundational boilerplate and UI/UX structure to stream YouTube videos, ready for the community to take the reins and implement full synchronization.
+<p align="center">
+Community continuation of the original <strong>LibreWatch</strong> project started by <strong>Krynet, LLC</strong>.
+</p>
 
-> 📢 **Notice from the Krynet Devs:** We built this framework to get the ball rolling, but Krynet, LLC does **not** host, run, or actively maintain this project. This is a 100% community-driven project moving forward. You want video synchronization? Grab your keyboard and help us build it!
+<p align="center">
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue">
+  <img src="https://img.shields.io/badge/Language-JavaScript-F7DF1E">
+  <img src="https://img.shields.io/badge/Status-Community%20Maintained-success">
+  <img src="https://img.shields.io/badge/Origin-Krynet%2C%20LLC-2563EB">
+</p>
 
----
-
-## ✨ Features & Current State
-
-* **YouTube Integration:** Ready-to-go video player interface for embedding YouTube content.
-* **Krynet Architecture:** Built from the ground up to plug seamlessly into existing Krynet software infrastructures.
-* **Open Canvas:** A clean, unbloated codebase designed for developers to easily implement networking features.
-* **Self-Hostable:** Complete control over your deployment.
-
----
-
-## 🗺️ Community Roadmap (Contributions Needed!)
-
-The foundation is set, but the core features still need to be coded by the community. Up next on the block:
-
-* [ ] **Room Synchronization:** Implement WebSockets/WebRTC to sync play, pause, and seek states across users.
-* [ ] **Chat System:** Add a text chat overlay for room participants.
-* [ ] **Playlist Support:** Allow users to queue up multiple YouTube links.
+> [!NOTE]
+> **LibreWatch was originally created by Krynet, LLC as an open-source YouTube "Watch Together" framework for the Krynet ecosystem.**
+>
+> The Krynet Team publicly released the project under **AGPL-3.0** and stated that future development would be community-driven. This repository continues that effort independently.
 
 ---
 
-## 🚀 Getting Started
+## 📖 About
 
-### Prerequisites
+LibreWatch is an open-source framework for building privacy-friendly YouTube watch experiences.
 
-Before installing the plugin, ensure you have a running instance of the core Krynet platform.
+Originally designed as a foundation for synchronized media playback within the Krynet ecosystem, the project provides the core interface and architecture while leaving advanced functionality to community contributors.
 
-### Installation
+Today, LibreWatch continues as a community-maintained project.
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/Krynet-LLC/LibreWatch.git](https://github.com/Krynet-LLC/LibreWatch.git)
-   cd LibreWatch
+---
+
+## ✨ Features
+
+* 🎥 YouTube playback
+* 🧱 Lightweight vanilla JavaScript
+* 🌍 Self-hostable
+* 🔓 Fully open source (AGPL-3.0)
+* 🛠️ Easy to extend
+* 🤝 Community maintained
+
+---
+
+## 🛣️ Roadmap
+
+Community contributions may include:
+
+* 🔄 Watch Together synchronization
+* 💬 Room chat
+* 📜 Playlist support
+* 👥 Multi-user sessions
+* 🎨 UI improvements
+* ⚡ Performance optimizations
+* 🐞 Bug fixes
+
+---
+
+## 🤝 Contributing
+
+LibreWatch was intentionally released as a community project.
+
+Whether you're implementing synchronization, improving the interface, fixing bugs, or adding new features, contributions are welcome.
+
+---
+
+## 🔗 Official Krynet
+
+Official Krynet resources:
+
+* 🌐 https://krynet.ai
+* 📦 https://codeberg.org/Krynet-LLC
+* 💻 https://gitlab.com/Krynet-Team
+
+---
+
+## 📄 License
+
+Licensed under **AGPL-3.0**.
+
+Original project by **Krynet, LLC**. Community continuation maintained independently.
+
+---
+
+<p align="center">
+
+❤️ Continuing an open-source project that was built to be community-driven.
+
+</p>
