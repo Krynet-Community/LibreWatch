@@ -79,11 +79,13 @@ export class LibreUltraCore {
     
     try {
       const cfg = await this.getConfig();
-      if (!cfg?.Misc?.sponsorBlock?.API) {
-        return [];
+      
+      // Use default API if config doesn't have it
+      let baseApi = 'https://sponsor.ajay.app';
+      if (cfg?.Misc?.sponsorBlock?.API) {
+        baseApi = cfg.Misc.sponsorBlock.API.replace(/\/+$/, '');
       }
       
-      const baseApi = cfg.Misc.sponsorBlock.API.replace(/\/+$/, '');
       const url = `${baseApi}/api/skipSegments?videoID=${videoId}`;
 
       return await this._fetchWithCache(url);
@@ -106,7 +108,15 @@ export class LibreUltraCore {
 
     // Fetch from network
     const freshResponse = await fetch(url, { referrerPolicy: 'no-referrer' });
+    
+    // Handle 404 gracefully (no sponsor segments found)
+    if (freshResponse.status === 404) {
+      console.log('No sponsor segments found for this video');
+      return [];
+    }
+    
     if (!freshResponse.ok) {
+      console.warn(`SponsorBlock API returned status ${freshResponse.status}`);
       return [];
     }
 
