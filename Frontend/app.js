@@ -60,7 +60,11 @@ async function handleLoadVideo(videoId) {
   
   try {
     console.log('Loading video:', id);
-    await LibreWatchPlayer.load(id);
+    const success = await LibreWatchPlayer.load(id);
+    
+    if (!success) {
+      throw new Error('Player returned false');
+    }
     
     // Only send sync if actually connected to a room
     if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
@@ -71,7 +75,7 @@ async function handleLoadVideo(videoId) {
     return true;
   } catch (err) {
     console.error('Failed to load video:', err);
-    showToast('Failed to load video', 'error');
+    showToast('Failed to load video: ' + err.message, 'error');
     return false;
   }
 }
@@ -315,11 +319,17 @@ async function initApp() {
       }
     });
     
-    // Load initial video if present
+    // Load initial video if present (optional)
     const initialVideoId = extractVideoID(videoInput.value.trim());
     if (initialVideoId) {
       console.log('Loading initial video:', initialVideoId);
-      await LibreWatchPlayer.load(initialVideoId);
+      const success = await LibreWatchPlayer.load(initialVideoId);
+      if (!success) {
+        showToast('Failed to load initial video', 'error');
+      }
+    } else {
+      // Show a welcome message if no video is loaded
+      showToast('LibreWatch ready! Paste a YouTube URL to start watching.');
     }
     
     renderPlaylist();

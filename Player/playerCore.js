@@ -102,12 +102,31 @@ export class LibreUltraCore {
     if (cacheStore) {
       const cachedResponse = await cacheStore.match(url);
       if (cachedResponse) {
-        return await cachedResponse.json();
+        try {
+          return await cachedResponse.json();
+        } catch (e) {
+          console.warn('Failed to parse cached response:', e);
+        }
       }
     }
 
-    // Fetch from network
-    const freshResponse = await fetch(url, { referrerPolicy: 'no-referrer' });
+    // Fetch from network with timeout
+    let freshResponse;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      freshResponse = await fetch(url, { 
+        referrerPolicy: 'no-referrer',
+        signal: controller.signal,
+        mode: 'cors'
+      });
+      
+      clearTimeout(timeoutId);
+    } catch (err) {
+      console.warn('SponsorBlock fetch failed:', err.message);
+      return [];
+    }
     
     // Handle 404 gracefully (no sponsor segments found)
     if (freshResponse.status === 404) {
@@ -120,11 +139,24 @@ export class LibreUltraCore {
       return [];
     }
 
-    // Cache the response
-    if (cacheStore) {
-      await cacheStore.put(url, freshResponse.clone());
+    // Parse JSON
+    let data;
+    try {
+      data = await freshResponse.json();
+    } catch (e) {
+      console.error('Failed to parse SponsorBlock response:', e);
+      return [];
     }
 
-    return await freshResponse.json();
+    // Cache the response
+    if (cacheStore) {
+      try {
+        await cacheStore.put(url, freshResponse.clone());
+      } catch (e) {
+        console.warn('Failed to cache response:', e);
+      }
+    }
+
+    return data;
   }
 }
