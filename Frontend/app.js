@@ -76,46 +76,6 @@ async function handleLoadVideo(videoId) {
   }
 }
 
-createRoomBtn.addEventListener('click', async () => {
-  const roomCode = await roomSync.createRoom();
-  if (roomCode) {
-    roomCodeDisplay.textContent = roomCode;
-    roomCodeDisplay.style.display = 'block';
-    roomCodeInput.value = roomCode;
-    updateRoomStatus(true);
-    showToast(`Room created: ${roomCode}`);
-  } else {
-    showToast('Failed to create room', 'error');
-  }
-});
-
-joinRoomBtn.addEventListener('click', async () => {
-  const code = roomCodeInput.value.trim().toUpperCase();
-  if (!code) {
-    showToast('Please enter a room code', 'error');
-    return;
-  }
-  
-  const success = await roomSync.joinRoom(code);
-  if (success) {
-    roomCodeDisplay.textContent = code;
-    roomCodeDisplay.style.display = 'block';
-    updateRoomStatus(true);
-    showToast(`Joined room: ${code}`);
-  } else {
-    showToast('Failed to join room', 'error');
-  }
-});
-
-copyRoomBtn.addEventListener('click', () => {
-  const code = roomCodeDisplay.textContent;
-  if (code) {
-    navigator.clipboard.writeText(code)
-      .then(() => showToast('Room code copied!'))
-      .catch(() => showToast('Failed to copy', 'error'));
-  }
-});
-
 function updateRoomStatus(connected, users = 0) {
   if (connected) {
     roomStatusIndicator.classList.add('connected');
@@ -127,85 +87,6 @@ function updateRoomStatus(connected, users = 0) {
     userCountEl.textContent = '';
   }
 }
-
-roomSync.on('sync', async (data) => {
-  switch (data.type) {
-    case 'LOAD_VIDEO':
-      if (data.videoId) {
-        await LibreWatchPlayer.load(data.videoId);
-        if (data.currentTime) LibreWatchPlayer.seekTo(data.currentTime);
-      }
-      break;
-    case 'PLAY':
-      LibreWatchPlayer.play();
-      break;
-    case 'PAUSE':
-      LibreWatchPlayer.pause();
-      break;
-    case 'SEEK':
-      LibreWatchPlayer.seekTo(data.currentTime);
-      break;
-  }
-});
-
-roomSync.on('userCount', (count) => updateRoomStatus(true, count));
-roomSync.on('disconnect', () => {
-  updateRoomStatus(false);
-  showToast('Disconnected from room', 'error');
-});
-
-LibreWatchPlayer.on('play', () => {
-  if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
-    roomSync.sendSync({ type: 'PLAY', timestamp: Date.now() });
-  }
-});
-
-LibreWatchPlayer.on('pause', () => {
-  if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
-    roomSync.sendSync({ type: 'PAUSE', timestamp: Date.now() });
-  }
-});
-
-LibreWatchPlayer.on('seek', (time) => {
-  if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
-    roomSync.sendSync({ type: 'SEEK', currentTime: time, timestamp: Date.now() });
-  }
-});
-
-LibreWatchPlayer.on('videoEnded', async () => {
-  const nextVideo = playlist.getNext();
-  if (nextVideo) {
-    await handleLoadVideo(nextVideo.id);
-    showToast(`Now playing: ${nextVideo.title}`);
-  }
-});
-
-addToPlaylistBtn.addEventListener('click', async () => {
-  const url = playlistInput.value.trim();
-  const videoId = extractVideoID(url);
-  
-  if (!videoId) {
-    showToast('Invalid YouTube URL', 'error');
-    return;
-  }
-  
-  const videoInfo = await playlist.add(videoId);
-  if (videoInfo) {
-    renderPlaylist();
-    playlistInput.value = '';
-    showToast('Added to playlist');
-    
-    if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
-      roomSync.sendSync({ type: 'PLAYLIST_ADD', videoId, title: videoInfo.title });
-    }
-  } else {
-    showToast('Failed to add video', 'error');
-  }
-});
-
-playlistInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') addToPlaylistBtn.click();
-});
 
 function renderPlaylist() {
   const items = playlist.getAll();
@@ -244,38 +125,6 @@ function renderPlaylist() {
   });
 }
 
-shuffleBtn.addEventListener('click', () => {
-  playlist.shuffle();
-  renderPlaylist();
-  showToast('Playlist shuffled');
-});
-
-clearPlaylistBtn.addEventListener('click', () => {
-  playlist.clear();
-  renderPlaylist();
-  showToast('Playlist cleared');
-});
-
-roomSync.on('playlist_add', (data) => {
-  playlist.addFromSync(data.videoId, data.title);
-  renderPlaylist();
-});
-
-sendChatBtn.addEventListener('click', sendMessage);
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendMessage();
-});
-
-function sendMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  
-  chat.send(text);
-  chatInput.value = '';
-}
-
-chat.on('message', (msg) => appendChatMessage(msg));
-
 function appendChatMessage(msg) {
   const div = document.createElement('div');
   div.className = `chat-message ${msg.self ? 'self' : ''}`;
@@ -299,6 +148,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  chat.send(text);
+  chatInput.value = '';
+}
+
 async function initApp() {
   try {
     console.log('Initializing LibreWatch...');
@@ -308,16 +165,162 @@ async function initApp() {
     
     await LibreWatchPlayer.init(playerElement);
     
+    // Setup event listeners AFTER DOM elements are initialized
+    loadBtn.addEventListener('click', () => handleLoadVideo());
+    videoInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleLoadVideo();
+    });
+    
+    createRoomBtn.addEventListener('click', async () => {
+      const roomCode = await roomSync.createRoom();
+      if (roomCode) {
+        roomCodeDisplay.textContent = roomCode;
+        roomCodeDisplay.style.display = 'block';
+        roomCodeInput.value = roomCode;
+        updateRoomStatus(true);
+        showToast(`Room created: ${roomCode}`);
+      } else {
+        showToast('Failed to create room', 'error');
+      }
+    });
+    
+    joinRoomBtn.addEventListener('click', async () => {
+      const code = roomCodeInput.value.trim().toUpperCase();
+      if (!code) {
+        showToast('Please enter a room code', 'error');
+        return;
+      }
+      
+      const success = await roomSync.joinRoom(code);
+      if (success) {
+        roomCodeDisplay.textContent = code;
+        roomCodeDisplay.style.display = 'block';
+        updateRoomStatus(true);
+        showToast(`Joined room: ${code}`);
+      } else {
+        showToast('Failed to join room', 'error');
+      }
+    });
+    
+    copyRoomBtn.addEventListener('click', () => {
+      const code = roomCodeDisplay.textContent;
+      if (code) {
+        navigator.clipboard.writeText(code)
+          .then(() => showToast('Room code copied!'))
+          .catch(() => showToast('Failed to copy', 'error'));
+      }
+    });
+    
+    addToPlaylistBtn.addEventListener('click', async () => {
+      const url = playlistInput.value.trim();
+      const videoId = extractVideoID(url);
+      
+      if (!videoId) {
+        showToast('Invalid YouTube URL', 'error');
+        return;
+      }
+      
+      const videoInfo = await playlist.add(videoId);
+      if (videoInfo) {
+        renderPlaylist();
+        playlistInput.value = '';
+        showToast('Added to playlist');
+        
+        if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
+          roomSync.sendSync({ type: 'PLAYLIST_ADD', videoId, title: videoInfo.title });
+        }
+      } else {
+        showToast('Failed to add video', 'error');
+      }
+    });
+    
+    playlistInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addToPlaylistBtn.click();
+    });
+    
+    shuffleBtn.addEventListener('click', () => {
+      playlist.shuffle();
+      renderPlaylist();
+      showToast('Playlist shuffled');
+    });
+    
+    clearPlaylistBtn.addEventListener('click', () => {
+      playlist.clear();
+      renderPlaylist();
+      showToast('Playlist cleared');
+    });
+    
+    sendChatBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+    
+    // Setup sync event handlers
+    roomSync.on('sync', async (data) => {
+      switch (data.type) {
+        case 'LOAD_VIDEO':
+          if (data.videoId) {
+            await LibreWatchPlayer.load(data.videoId);
+            if (data.currentTime) LibreWatchPlayer.seekTo(data.currentTime);
+          }
+          break;
+        case 'PLAY':
+          LibreWatchPlayer.play();
+          break;
+        case 'PAUSE':
+          LibreWatchPlayer.pause();
+          break;
+        case 'SEEK':
+          LibreWatchPlayer.seekTo(data.currentTime);
+          break;
+      }
+    });
+    
+    roomSync.on('userCount', (count) => updateRoomStatus(true, count));
+    roomSync.on('disconnect', () => {
+      updateRoomStatus(false);
+      showToast('Disconnected from room', 'error');
+    });
+    
+    roomSync.on('playlist_add', (data) => {
+      playlist.addFromSync(data.videoId, data.title);
+      renderPlaylist();
+    });
+    
+    chat.on('message', (msg) => appendChatMessage(msg));
+    
+    LibreWatchPlayer.on('play', () => {
+      if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
+        roomSync.sendSync({ type: 'PLAY', timestamp: Date.now() });
+      }
+    });
+    
+    LibreWatchPlayer.on('pause', () => {
+      if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
+        roomSync.sendSync({ type: 'PAUSE', timestamp: Date.now() });
+      }
+    });
+    
+    LibreWatchPlayer.on('seek', (time) => {
+      if (roomSync && typeof roomSync.isConnected === 'function' && roomSync.isConnected()) {
+        roomSync.sendSync({ type: 'SEEK', currentTime: time, timestamp: Date.now() });
+      }
+    });
+    
+    LibreWatchPlayer.on('videoEnded', async () => {
+      const nextVideo = playlist.getNext();
+      if (nextVideo) {
+        await handleLoadVideo(nextVideo.id);
+        showToast(`Now playing: ${nextVideo.title}`);
+      }
+    });
+    
+    // Load initial video if present
     const initialVideoId = extractVideoID(videoInput.value.trim());
     if (initialVideoId) {
       console.log('Loading initial video:', initialVideoId);
       await LibreWatchPlayer.load(initialVideoId);
     }
-    
-    loadBtn.addEventListener('click', () => handleLoadVideo());
-    videoInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleLoadVideo();
-    });
     
     renderPlaylist();
     showToast('LibreWatch ready!');
