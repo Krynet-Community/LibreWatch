@@ -46,6 +46,13 @@ class PlayerManager {
     this.core = new LibreUltraCore();
     this.segments = [];
     this.isSeeking = false;
+    this.currentVideoId = null;
+    this.eventListeners = {
+      play: [],
+      pause: [],
+      seek: [],
+      videoEnded: []
+    };
   }
 
   async init(selector) {
@@ -76,21 +83,88 @@ class PlayerManager {
     this.player.on('ready', () => {
       const currentId = this.player.embed?.getVideoData()?.video_id;
       if (currentId) {
+        this.currentVideoId = currentId;
         this.loadSegments(currentId);
       }
     });
+
+    this.player.on('play', () => this._emit('play'));
+    this.player.on('pause', () => this._emit('pause'));
+    this.player.on('seeked', () => {
+      this._emit('seek', this.player.currentTime);
+    });
+    this.player.on('ended', () => this._emit('videoEnded'));
   }
 
   async load(videoId) {
     if (!this.player) return;
     
     this.segments = [];
+    this.currentVideoId = videoId;
     this.player.source = {
       type: 'video',
       sources: [{ src: videoId, provider: 'youtube' }]
     };
     
     await this.loadSegments(videoId);
+  }
+
+  /**
+   * Get current video ID
+   * @returns {string|null} Current video ID or null
+   */
+  getCurrentVideoId() {
+    return this.currentVideoId;
+  }
+
+  /**
+   * Play the video
+   */
+  play() {
+    if (this.player) {
+      this.player.play();
+    }
+  }
+
+  /**
+   * Pause the video
+   */
+  pause() {
+    if (this.player) {
+      this.player.pause();
+    }
+  }
+
+  /**
+   * Seek to a specific time
+   * @param {number} time - Time in seconds
+   */
+  seekTo(time) {
+    if (this.player) {
+      this.player.currentTime = time;
+    }
+  }
+
+  /**
+   * Register event listener
+   * @param {string} event - Event name
+   * @param {Function} callback - Callback function
+   */
+  on(event, callback) {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event].push(callback);
+    }
+    return this;
+  }
+
+  /**
+   * Emit event to listeners
+   * @private
+   */
+  _emit(event, data) {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event].forEach(cb => cb(data));
+    }
   }
 
   async loadSegments(videoId) {
