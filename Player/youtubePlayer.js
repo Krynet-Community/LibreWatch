@@ -97,16 +97,35 @@ class PlayerManager {
   }
 
   async load(videoId) {
-    if (!this.player) return;
+    if (!this.player) {
+      console.error('Player not initialized');
+      return false;
+    }
     
     this.segments = [];
     this.currentVideoId = videoId;
-    this.player.source = {
-      type: 'video',
-      sources: [{ src: videoId, provider: 'youtube' }]
-    };
     
-    await this.loadSegments(videoId);
+    try {
+      this.player.source = {
+        type: 'video',
+        sources: [{ src: videoId, provider: 'youtube' }]
+      };
+      
+      // Wait for player to be ready
+      await new Promise((resolve) => {
+        if (this.player.embed && this.player.embed.getVideoData) {
+          resolve();
+        } else {
+          this.player.once('ready', () => resolve());
+        }
+      });
+      
+      await this.loadSegments(videoId);
+      return true;
+    } catch (err) {
+      console.error('Failed to load video:', err);
+      return false;
+    }
   }
 
   /**
@@ -170,7 +189,7 @@ class PlayerManager {
   async loadSegments(videoId) {
     try {
       const data = await this.core.getSponsorSegments(videoId);
-      this.segments = data.sort((a, b) => a.segment[0] - b.segment[0]);
+      this.segments = Array.isArray(data) ? data.sort((a, b) => a.segment[0] - b.segment[0]) : [];
     } catch (err) {
       console.error('Failed to load sponsor segments:', err);
       this.segments = [];
