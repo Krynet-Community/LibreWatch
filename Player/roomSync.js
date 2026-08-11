@@ -10,7 +10,7 @@ export class RoomSyncManager {
     this.peerConnection = null;
     this.dataChannel = null;
     this.ws = null;
-    this.isConnected = false;
+    this._connected = false;
     this.userCount = 1;
     this.eventListeners = new Map();
     this.signalingServers = [
@@ -75,7 +75,7 @@ export class RoomSyncManager {
         await this._setupWebRTC(true);
       }
       
-      this.isConnected = true;
+      this._connected = true;
       this._emit('connect', { roomCode: this.roomCode });
       this._updateUserCount(1);
       
@@ -102,7 +102,7 @@ export class RoomSyncManager {
         await this._setupWebRTC(false, code);
       }
       
-      this.isConnected = true;
+      this._connected = true;
       this._emit('connect', { roomCode: code });
       
       return true;
@@ -168,9 +168,9 @@ export class RoomSyncManager {
 
     this.peerConnection.onconnectionstatechange = () => {
       if (this.peerConnection.connectionState === 'connected') {
-        this.isConnected = true;
+        this._connected = true;
       } else if (this.peerConnection.connectionState === 'disconnected') {
-        this.isConnected = false;
+        this._connected = false;
         this._emit('disconnect');
       }
     };
@@ -206,12 +206,12 @@ export class RoomSyncManager {
     if (!this.dataChannel) return;
 
     this.dataChannel.onopen = () => {
-      this.isConnected = true;
+      this._connected = true;
       this._emit('connect', { roomCode: this.roomCode });
     };
 
     this.dataChannel.onclose = () => {
-      this.isConnected = false;
+      this._connected = false;
       this._emit('disconnect');
     };
 
@@ -354,7 +354,7 @@ export class RoomSyncManager {
    * @returns {boolean} Connection status
    */
   isConnected() {
-    return this.isConnected && !!this.roomCode;
+    return this._connected && !!this.roomCode;
   }
 
   /**
@@ -381,7 +381,7 @@ export class RoomSyncManager {
     }
 
     this.roomCode = null;
-    this.isConnected = false;
+    this._connected = false;
     this.userCount = 1;
     this._emit('disconnect');
   }
