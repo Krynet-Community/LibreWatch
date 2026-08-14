@@ -1,34 +1,88 @@
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111827,35:1E3A8A,70:2563EB,100:38BDF8&height=200&section=header&text=LibreWatch&fontSize=42&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Community-maintained%20continuation&descAlignY=58" />
-</p>
-
-<h1 align="center">LibreWatch</h1>
-
-<p align="center">
-Community continuation of the original <strong>LibreWatch</strong> project started by <strong>Krynet, LLC</strong>.
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111827,35:1E3A8A,70:2563EB,100:38BDF8&height=220&section=header&text=LibreWatch&fontSize=46&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Independent%20Community%20Continuation&descAlignY=58" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img src="https://img.shields.io/badge/Language-JavaScript-F7DF1E">
-  <img src="https://img.shields.io/badge/Status-Community%20Maintained-success">
-  <img src="https://img.shields.io/badge/Origin-Krynet%2C%20LLC-2563EB">
+  <strong>📺 Watch Together • 🛡️ Privacy • 🔓 Open Source • 🤝 Community</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg">
+  <img src="https://img.shields.io/badge/Language-JavaScript-F7DF1E.svg">
+  <img src="https://img.shields.io/badge/Status-Community%20Maintained-success.svg">
+  <img src="https://img.shields.io/badge/Origin-Krynet%2C%20LLC-2563EB.svg">
 </p>
 
 > [!NOTE]
 > **LibreWatch was originally created by Krynet, LLC as an open-source YouTube "Watch Together" framework for the Krynet ecosystem.**
 >
-> The Krynet Team publicly released the project under **AGPL-3.0** and stated that future development would be community-driven. This repository continues that effort independently.
+> The original project was released under **AGPL-3.0** with the intention of allowing community development.
+>
+> This repository is an **independent community-maintained continuation** of that work.
+
+---
+
+## ⚠️ Important
+
+LibreWatch is **not an official Krynet, LLC repository**.
+
+This project is maintained independently by **Krynet Community** and may differ from the original project in implementation, security practices, quality standards, dependencies, features, and development direction.
+
+Nothing in this repository should be interpreted as:
+
+* ❌ Official Krynet software
+* ❌ An official Krynet release
+* ❌ Official Krynet documentation
+* ❌ Official Krynet security guidance
+* ❌ A Krynet partnership
+* ❌ Krynet, LLC endorsement
+* ❌ Official Krynet UGC Program participation
+* ❌ An official Krynet Store submission
+
+> [!CAUTION]
+>
+> ### 🔐 Different Security & Quality Practices
+>
+> **Krynet Community does not follow the same security practices or quality practices as the official Krynet Team.**
+>
+> Community-maintained changes may not receive the same code review, security review, testing, auditing, release validation, or quality assurance used by Krynet, LLC.
+>
+> Review the source code and dependencies before deploying LibreWatch or integrating it into another application.
+
+> [!WARNING]
+>
+> ### 🌐 External Services
+>
+> LibreWatch can communicate with external services depending on configuration and enabled functionality, including YouTube, SponsorBlock, ClearURLs resources, CDN providers, and room/synchronization infrastructure.
+>
+> The privacy practices, availability, logging, and security of those services are **outside the control of LibreWatch**.
+>
+> Review the configured endpoints before deploying a production instance.
 
 ---
 
 ## 📖 About
 
-LibreWatch is an open-source framework for building privacy-friendly YouTube watch experiences.
+**LibreWatch** is an open-source framework for building privacy-conscious YouTube watch experiences.
 
-Originally designed as a foundation for synchronized media playback within the Krynet ecosystem, LibreWatch provides a lightweight vanilla JavaScript architecture for YouTube playback, room synchronization, playlist management, chat, and playback enhancements.
+Originally designed as a foundation for synchronized media playback within the Krynet ecosystem, LibreWatch provides a lightweight JavaScript architecture for:
 
-The project is designed to remain **self-hostable, dependency-light, and community-maintained**.
+* 🎥 YouTube playback
+* 👥 Watch Together rooms
+* 📋 Playlist management
+* 💬 Chat
+* 🛡️ URL privacy
+* ⏭️ SponsorBlock integration
+* 📱 Responsive interfaces
+
+The community continuation aims to keep the project:
+
+* 🔓 Free and open source
+* 🌍 Self-hostable
+* 🧱 Lightweight
+* ⚡ Dependency-conscious
+* 🛡️ Privacy-oriented
+* 🤝 Community maintained
 
 ---
 
@@ -36,78 +90,94 @@ The project is designed to remain **self-hostable, dependency-light, and communi
 
 ### 🎥 YouTube Playback
 
-* YouTube playback through **Plyr 3.7.8**
-* Dynamically loads Plyr from a primary CDN with an automatic fallback CDN
-* Standard playback controls:
+LibreWatch provides YouTube playback through **Plyr 3.7.8**.
 
-  * ▶️ Play
-  * ⏸️ Pause
-  * ⏩ Progress / seeking
-  * 🔊 Volume / mute
-  * 🖥️ Fullscreen
-  * ⏱️ Current playback time
-* Load videos from:
+Supported input formats include:
 
-  * YouTube URLs
-  * YouTube Shorts URLs
-  * YouTube embed URLs
-  * `youtu.be` URLs
-  * Piped URLs
-  * Invidious URLs
-  * Raw 11-character YouTube video IDs
+* 🔗 YouTube URLs
+* 📱 YouTube Shorts URLs
+* ▶️ YouTube embed URLs
+* 🔗 `youtu.be` URLs
+* 🌐 Piped URLs
+* 🕵️ Invidious URLs
+* 🔢 Raw 11-character YouTube video IDs
+
+Standard controls include:
+
+* ▶️ Play
+* ⏸️ Pause
+* ⏩ Seeking
+* 🔊 Volume
+* 🔇 Mute
+* 🖥️ Fullscreen
+* ⏱️ Playback position
+
+---
 
 ### 🧹 URL Privacy
 
 LibreWatch includes dynamic **ClearURLs** integration.
 
-* Fetches the global ClearURLs ruleset at runtime
-* Compiles provider-specific URL rules
-* Removes known tracking query parameters
-* Applies provider raw URL-cleaning rules
-* Honors provider exceptions
-* Removes tracking hashes containing patterns such as:
+The system can:
 
-  * `utm_*`
-  * `fbclid`
-  * `gclid`
-* Keeps the original URL when it cannot safely be parsed
+* 📥 Fetch the global ClearURLs ruleset
+* ⚙️ Compile provider-specific rules
+* 🧹 Remove known tracking parameters
+* 🔗 Apply provider URL-cleaning rules
+* 🚫 Remove common identifiers
+* 🛡️ Honor provider exceptions
+* 🔗 Clean URLs before extracting YouTube video IDs
 
-This allows YouTube URLs to be cleaned before their video IDs are extracted.
+Known tracking patterns may include:
+
+```text
+utm_*
+fbclid
+gclid
+```
+
+If a URL cannot be safely parsed, LibreWatch preserves the original URL rather than attempting unsafe transformations.
+
+---
 
 ### 🛡️ SponsorBlock
 
 LibreWatch integrates SponsorBlock for automatic sponsor-segment skipping.
 
-* Retrieves SponsorBlock segments for the current video
-* Uses configurable SponsorBlock API endpoints
-* Falls back to `https://sponsor.ajay.app` when no custom endpoint is configured
-* Sorts segments chronologically
-* Automatically seeks past detected sponsor segments during playback
-* Handles videos with no available segments gracefully
-* Uses browser caching for previously retrieved segment data
-* Uses a 5-second network timeout
-* Uses `no-referrer` when requesting SponsorBlock data
+Features include:
 
-SponsorBlock requests are protected by built-in request controls:
+* ⏭️ Sponsor-segment detection
+* 📡 Configurable SponsorBlock endpoints
+* 🔄 Fallback to `https://sponsor.ajay.app`
+* 📊 Chronological segment sorting
+* ⏩ Automatic sponsor skipping
+* 💾 Browser caching
+* ⏱️ Five-second network timeout
+* 🚫 `no-referrer` requests
 
-* 25-token request bucket
-* 60-second token reset
-* 4-second per-video cooldown
-* Cross-tab request coordination through `BroadcastChannel`
+Built-in request controls include:
+
+* 🪣 25-token request bucket
+* 🔄 60-second token reset
+* ⏱️ Four-second per-video cooldown
+* 📡 Cross-tab coordination through `BroadcastChannel`
+
+---
 
 ### 👥 Watch Rooms
 
-LibreWatch includes a room-based synchronization interface.
+LibreWatch includes room-based synchronization.
 
-* Create watch rooms
-* Join rooms using a room code
-* Display the current room code
-* Copy room codes to the clipboard
-* Display connection status
-* Display the number of users currently online
-* Handle room disconnection events
+Users can:
 
-Playback actions can be synchronized between connected room participants:
+* ➕ Create rooms
+* 🔗 Join rooms using room codes
+* 📋 Copy room codes
+* 📡 View connection status
+* 👥 View online participants
+* 🔌 Handle room disconnections
+
+Playback synchronization can include:
 
 * 🎬 Video loading
 * ▶️ Play
@@ -115,81 +185,91 @@ Playback actions can be synchronized between connected room participants:
 * ⏩ Seeking
 * 🕐 Playback position
 
+---
+
 ### 📋 Playlist
 
-LibreWatch includes a full client-side playlist manager.
+LibreWatch includes a client-side playlist manager.
 
-* Add YouTube videos to a queue
-* Prevent duplicate videos
-* Automatically retrieve video titles through YouTube's oEmbed endpoint
-* Add synchronized playlist entries without repeating title lookups
-* Display video thumbnails
-* Display video titles
-* Highlight the currently playing video
-* Remove individual videos
-* Move to the next video
-* Move to the previous video
-* Automatically advance when a video ends
-* Shuffle using Fisher-Yates
-* Restore the original playlist order after shuffling
-* Clear the entire queue
-* Track the current playlist position
+Features include:
 
-Playlist additions can also be synchronized with connected rooms.
+* ➕ Add YouTube videos
+* 🚫 Prevent duplicate entries
+* 🏷️ Retrieve video titles through YouTube oEmbed
+* 🖼️ Display thumbnails
+* 🎬 Highlight the current video
+* 🗑️ Remove videos
+* ⏭️ Next video
+* ⏮️ Previous video
+* 🔄 Automatic advancement
+* 🔀 Fisher-Yates shuffle
+* ↩️ Restore original order
+* 🧹 Clear the queue
+* 📍 Track the current position
+
+Playlist changes can also be synchronized with connected rooms.
+
+---
 
 ### 💬 Chat
 
-LibreWatch includes a lightweight chat manager and UI.
+LibreWatch includes a lightweight chat system.
 
-* Random anonymous usernames
-* Persistent username identity through `localStorage`
-* Custom username support
-* Message timestamps
-* Local/self message styling
-* Message history stored in memory
-* 500-character UI input limit
-* Same-browser tab communication through `BroadcastChannel`
-* Event-based message handling
+Features include:
+
+* 👤 Random anonymous usernames
+* 💾 Persistent username identity through `localStorage`
+* ✏️ Custom usernames
+* 🕐 Message timestamps
+* 💬 Local/self message styling
+* 🧠 In-memory message history
+* 📏 500-character input limit
+* 📡 Same-browser tab communication
+* 🔄 Event-based message handling
+
+---
 
 ### 🔔 UI Notifications
 
-The application includes a lightweight toast system for status feedback.
+A lightweight toast system provides status feedback for events such as:
 
-Notifications are used for events such as:
+* ✅ Successful video loads
+* ❌ Invalid URLs
+* ⚠️ Failed video loads
+* 🏠 Room creation
+* 🔗 Room joining
+* 🔌 Room disconnection
+* ➕ Playlist additions
+* 🧹 Playlist clearing
+* 🔀 Playlist shuffling
+* 📋 Room-code copying
+* ⚠️ Player initialization failures
 
-* Video loaded successfully
-* Invalid URLs
-* Failed video loads
-* Room creation
-* Room joining
-* Room disconnection
-* Playlist additions
-* Playlist clearing
-* Playlist shuffling
-* Room-code copying
-* Player initialization failures
+---
 
 ### 📱 Responsive Interface
 
-The included interface adapts to different screen sizes.
+The included interface supports:
 
-* Desktop two-column layout
-* Mobile single-column layout
-* Responsive player
-* Responsive controls
-* Mobile-friendly buttons and inputs
-* Adjustable playlist and chat heights
-* Dark UI with CSS custom properties
+* 🖥️ Desktop two-column layouts
+* 📱 Mobile single-column layouts
+* 🎥 Responsive playback
+* 🎛️ Responsive controls
+* 📱 Mobile-friendly controls
+* 📋 Adjustable playlist and chat areas
+* 🌙 Dark UI
+* 🎨 CSS custom properties
 
 ---
 
 ## 🏗️ Architecture
 
-LibreWatch is intentionally split into small, focused JavaScript modules.
+LibreWatch uses small, focused JavaScript modules.
 
 ```text
-LibreWatch
-├── Player/
+📺 LibreWatch
+│
+├── 🎥 Player/
 │   ├── playerCore.js
 │   ├── youtubePlayer.js
 │   ├── extract.js
@@ -197,102 +277,233 @@ LibreWatch
 │   ├── chat.js
 │   └── roomSync.js
 │
-├── Player/config.json
+├── ⚙️ Player/
+│   └── config.json
 │
-└── Web UI
+└── 🌐 Web UI
     ├── index.html
     └── app.js
 ```
 
-### Core responsibilities
+### 🧩 Core Components
 
-| Module             | Responsibility                                                      |
-| ------------------ | ------------------------------------------------------------------- |
-| `extract.js`       | URL cleaning and YouTube video ID extraction                        |
-| `playerCore.js`    | Configuration, SponsorBlock, caching, and request limiting          |
-| `youtubePlayer.js` | Plyr initialization, YouTube playback, events, and sponsor skipping |
-| `playlist.js`      | Queue management, navigation, shuffle, and auto-advance             |
-| `chat.js`          | User identity and chat message management                           |
-| `roomSync.js`      | Room creation, joining, and synchronization                         |
-| `app.js`           | Connects the UI and application modules                             |
-| `config.json`      | Player-related configuration                                        |
+| Module             | Responsibility                                                 |
+| ------------------ | -------------------------------------------------------------- |
+| `extract.js`       | 🧹 URL cleaning and YouTube ID extraction                      |
+| `playerCore.js`    | ⚙️ Configuration, SponsorBlock, caching, and request limiting  |
+| `youtubePlayer.js` | 🎥 Plyr initialization, playback, events, and sponsor skipping |
+| `playlist.js`      | 📋 Queue management, navigation, shuffle, and auto-advance     |
+| `chat.js`          | 💬 User identity and chat management                           |
+| `roomSync.js`      | 👥 Room creation, joining, and synchronization                 |
+| `app.js`           | 🔌 Connects the UI and application modules                     |
+| `config.json`      | ⚙️ Player configuration                                        |
 
-The architecture uses browser-native APIs where practical, including:
+LibreWatch favors browser-native APIs where practical:
 
-* `fetch`
-* `URL`
-* `localStorage`
-* `BroadcastChannel`
-* `Cache API`
-* `AbortController`
-* `navigator.clipboard`
+```text
+fetch
+URL
+localStorage
+BroadcastChannel
+Cache API
+AbortController
+navigator.clipboard
+```
+
+---
+
+## 🔐 Privacy & Data Handling
+
+LibreWatch is designed to minimize unnecessary tracking and telemetry where the implementation can control it.
+
+However, LibreWatch **cannot control external services**.
+
+Depending on configuration and functionality, requests may be made to:
+
+* ▶️ YouTube
+* 🛡️ SponsorBlock
+* 🧹 ClearURLs resources
+* 📦 CDN providers
+* 👥 Room/synchronization services
+* 🌐 Configured external endpoints
+
+> [!IMPORTANT]
+> **Using LibreWatch does not make YouTube or other external services private.**
+>
+> External providers may collect IP addresses, request information, cookies, device information, or other telemetry according to their own policies.
+
+LibreWatch should therefore be considered a **privacy-conscious interface**, not an anonymity system.
+
+---
+
+## 🔒 Security
+
+Community maintainers recommend reviewing:
+
+* 🌐 Network endpoints
+* 📦 JavaScript dependencies
+* 🔑 Authentication mechanisms
+* 💾 Local storage
+* 🍪 Cookies
+* 📡 Room synchronization
+* 🔗 External URLs
+* 🧩 Third-party integrations
+
+Do not assume that a community release has undergone the same security review as official Krynet software.
+
+> [!CAUTION]
+> **Krynet Community does not follow the same security or quality practices as Krynet, LLC.**
+>
+> LibreWatch is independently maintained.
+
+---
+
+## 📁 Project Structure
+
+```text
+LibreWatch/
+│
+├── 📄 LICENSE
+├── 📄 README.md
+│
+├── 🎥 Player/
+│   ├── playerCore.js
+│   ├── youtubePlayer.js
+│   ├── extract.js
+│   ├── playlist.js
+│   ├── chat.js
+│   ├── roomSync.js
+│   └── config.json
+│
+└── 🌐 Web UI/
+    ├── index.html
+    └── app.js
+```
+
+Additional project files may be added as the community architecture evolves.
 
 ---
 
 ## 🛣️ Roadmap
 
-LibreWatch already contains the foundation for synchronized watch sessions, playlist management, and enhanced YouTube playback.
-
-Future community work may include:
+Future community development may include:
 
 * 🔄 More robust Watch Together synchronization
 * 💬 Full room-based chat synchronization
-* 📜 Persistent / shared playlists
+* 📋 Persistent shared playlists
 * 👥 Improved participant management
 * 🔐 Additional privacy protections
 * 🎨 UI and accessibility improvements
-* ⚡ Performance optimizations
-* 📡 Improved synchronization reliability
+* ⚡ Performance improvements
+* 📡 More reliable synchronization
 * 🧪 Automated testing
-* 🐞 Bug fixes and compatibility improvements
-* ⚙️ Additional player configuration options
+* 🐛 Compatibility fixes
+* ⚙️ Additional player configuration
+* 🌍 Better self-hosting support
+
+> [!NOTE]
+> Roadmap items are community goals and are **not commitments from Krynet, LLC**.
 
 ---
 
 ## 🤝 Contributing
 
-LibreWatch was intentionally released as a community project.
+LibreWatch was released as an open-source project intended to support community development.
 
-Contributions are welcome across the entire stack, including:
+Contributions are welcome across:
 
-* Player functionality
-* Watch-room synchronization
-* Playlist features
-* Chat
-* Privacy improvements
-* UI/UX
-* Accessibility
-* Performance
-* Documentation
-* Bug fixes
-* Testing
+* 🎥 Player functionality
+* 👥 Watch-room synchronization
+* 📋 Playlist functionality
+* 💬 Chat
+* 🛡️ Privacy
+* 🎨 UI/UX
+* ♿ Accessibility
+* ⚡ Performance
+* 📚 Documentation
+* 🐛 Bug fixes
+* 🧪 Testing
 
-Keep changes focused and understandable. LibreWatch is intended to remain approachable for contributors rather than becoming an unnecessarily complicated framework.
+### 🧑‍💻 Contribution Principles
+
+Please keep changes:
+
+* 📖 Readable
+* 🧩 Focused
+* 📝 Documented
+* 🔍 Reviewable
+* ⚡ Lightweight
+* 🛠️ Practical
+
+LibreWatch should remain approachable for contributors rather than becoming an unnecessarily complicated framework.
 
 ---
 
-## 🔗 Official Krynet
+## 🏛️ Original Project
 
-Official Krynet resources:
+LibreWatch was originally created by **Krynet, LLC**.
 
-* 🌐 https://krynet.ai
-* 📦 https://codeberg.org/Krynet-LLC
-* 💻 https://gitlab.com/Krynet-Team
+### 🔗 Official Krynet Resources
 
-LibreWatch is a **community-maintained continuation** and is not presented as an official Krynet project.
+* 🌐 [https://krynet.ai](https://krynet.ai)
+* 📦 [https://codeberg.org/Krynet-LLC](https://codeberg.org/Krynet-LLC)
+* 💻 [https://gitlab.com/Krynet-Team](https://gitlab.com/Krynet-Team)
+
+The original project, branding, trademarks, and other applicable rights remain subject to their respective owners and applicable licenses.
+
+This repository is an **independent community continuation**.
 
 ---
 
-## 📄 License
+## 🧩 Krynet Community
 
-Licensed under **AGPL-3.0**.
+LibreWatch is part of a broader community effort around software originating from or related to the Krynet ecosystem.
 
-Original project by **Krynet, LLC**. Community continuation maintained independently.
+The community focuses on:
+
+* 🔓 Preserving available source code
+* 🛠️ Continuing inactive or abandoned components
+* 🧑‍💻 Supporting independent contributors
+* 🌍 Supporting self-hosted deployments
+* 🛡️ Maintaining privacy-oriented functionality
+* 📚 Preserving technical documentation
+* 🔬 Experimenting with alternative implementations
+
+The purpose is **not to impersonate Krynet, LLC**, but to provide an independent place for community members to continue working on related open-source software.
+
+---
+
+## 🚫 UGC Program & Partnership Status
+
+> [!IMPORTANT]
+> **LibreWatch is not an official Krynet UGC Program project.**
+>
+> Krynet Community is **not a Krynet, LLC partner**.
+>
+> This repository should not be interpreted as participation in, approval under, or acceptance into any official Krynet creator, UGC, plugin, theme, extension, or Store program.
+
+Official Krynet UGC opportunities and Store policies should be obtained directly from **Krynet, LLC**.
+
+---
+
+## 📜 License
+
+LibreWatch is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+See [`LICENSE`](LICENSE) for the complete license terms.
+
+The original project was created by **Krynet, LLC**. This continuation is maintained independently by the community.
 
 ---
 
 <p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111827,35:1E3A8A,70:2563EB,100:38BDF8&height=120&section=footer" />
+</p>
 
-❤️ Continuing an open-source project that was built to be community-driven.
+<p align="center">
+  📺 <strong>LibreWatch</strong> · 🛡️ Privacy · 🔓 Open Source · 🤝 Community Maintained
+</p>
 
+<p align="center">
+  <strong>Not Official Krynet Software · Not a Krynet Partner · Not Part of the Krynet UGC Program</strong>
 </p>
